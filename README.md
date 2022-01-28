@@ -9,3 +9,18 @@ Design goals:
 
 key - blake3(256) hash of the content
 value - bytes (should be )
+
+
+```
+key      | value
+---------|----------
+32 bytes | 448 bytes
+```
+
+This is large enough for the value to contain something like:
+
+|  nonce   |     encrypted payload        |
+|          |------------------------------|  
+|          | next key    | padded message |
+|----------|-------------|----------------|
+| 24 bytes | 32 bytes    | 392 bytes      |
