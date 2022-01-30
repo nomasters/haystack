@@ -20,7 +20,15 @@ var (
 	ErrMessageTooLong  = errors.New("Message too long")
 )
 
-// ValidLength returns a boolean of true if n == KeyLength or MessageLength
-func ValidLength(n int) bool {
+// validLength returns a boolean of true if n == KeyLength or MessageLength
+func validLength(n int) bool {
 	return n == KeyLength || n == MessageLength
 }
+
+// TODO:
+// - check if read request or write request
+// -- if read, message should be 32 bytes, take this and attempt to retreive from storage
+// -- if write, message should be 480 bytes, validate the payload and by taking the hash of the Value and comparing to the key
+// --- if valid, write the payload to storage
+// --- return the the hash(write hash + TTL)
+// - create a storage interface for reads and writes
