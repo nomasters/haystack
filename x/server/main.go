@@ -33,12 +33,12 @@ func sendResponse(conn *net.UDPConn, addr *net.UDPAddr) {
 }
 
 func process(conn *net.UDPConn) {
-	buff := make([]byte, 2048)
-	_, remoteaddr, err := conn.ReadFromUDP(buff)
+	b := make([]byte, 10)
+	n, remoteaddr, err := conn.ReadFromUDP(b)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	fmt.Printf("Read a message from %v %s \n", remoteaddr, buff)
+	fmt.Printf("Read a message from %v %s length: %v\n", remoteaddr, b, n)
 	go sendResponse(conn, remoteaddr)
 }
