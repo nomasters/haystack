@@ -21,6 +21,9 @@ var (
 )
 
 // TODO:
+// setup haystack client:
+// -- this should initialize a UDP config
+// -- use client.Find()
 
 // - server:
 // - check if read request or write request
