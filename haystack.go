@@ -16,16 +16,13 @@ const (
 )
 
 var (
-	ErrMessageTooShort = errors.New("Message too short")
-	ErrMessageTooLong  = errors.New("Message too long")
+	ErrMessageTooShort = errors.New("message too short")
+	ErrMessageTooLong  = errors.New("message too long")
 )
 
-// validLength returns a boolean of true if n == KeyLength or MessageLength
-func validLength(n int) bool {
-	return n == KeyLength || n == MessageLength
-}
-
 // TODO:
+
+// - server:
 // - check if read request or write request
 // -- if read, message should be 32 bytes, take this and attempt to retreive from storage
 // -- if write, message should be 480 bytes, validate the payload and by taking the hash of the Value and comparing to the key
