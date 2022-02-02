@@ -38,10 +38,10 @@ Ideas for how the code works for the client.
 
 
 // The client should configure a UDP connection and handle interacting with the server
-client, err := haystack.New("localhost:8080")
+client, err := haystack.Client("localhost:8080")
 
 // if we want to pass in options, we can do it like this.
-client, err := haystack.New("localhost:8080", ...opts)
+client, err := haystack.Client("localhost:8080", ...opts)
 
 // with the client we can read and write to the haystack server
 // it returns a needle and an error
@@ -54,7 +54,10 @@ needle, err := needle.New(message)
 needle, err := needle.FromBytes(b)
 
 // posting to haystack takes a single argument of a needle
-err := client.Post(needle)
-
+response, err := client.Post(needle)
 
 */
+
+// response for posting a needle is:
+// hash(posted hash + TTL in seconds) + submitted_key + TTL in seconds
+// we should be able to verify that the hash is correct that the submitted key is correct and we should be able to use the TTL if needed
