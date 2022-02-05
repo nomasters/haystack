@@ -13,7 +13,7 @@ const (
 	// KeyLength is the length in bytes of the key prefix in any message
 	KeyLength = 32
 	// ValueLength is the length of the remaining bytes of the message after the KeyLength is subtracked out.
-	ValueLength = KeyLength - MessageLength
+	ValueLength = MessageLength - KeyLength
 )
 
 var (
@@ -22,35 +22,45 @@ var (
 	ErrInvalidHash     = errors.New("invalid hash")
 )
 
+type Eye [KeyLength]byte
+type Shaft [ValueLength]byte
+
 type Needle struct {
-	internal [MessageLength]byte
+	eye   Eye
+	shaft Shaft
 }
 
 // FromBytes takes a byte slice and expects it to be exactly the length of MessageLength.
 func FromBytes(b []byte) (*Needle, error) {
-	var n Needle
+	var e Eye
+	var s Shaft
 	if err := validateLength(len(b)); err != nil {
 		return nil, err
 	}
-	copy(n.internal[:], b)
+	copy(e[:], b[:KeyLength])
+	copy(s[:], b[KeyLength:])
+	n := Needle{eye: e, shaft: s}
 	return &n, n.ValidateHash()
 }
 
-func (n Needle) Key() []byte {
-	return n.internal[:KeyLength]
+func (n Needle) Eye() []byte {
+	return n.eye[:]
 }
 
-func (n Needle) Value() []byte {
-	return n.internal[KeyLength:]
+func (n Needle) Shaft() []byte {
+	return n.shaft[:]
 }
 
 func (n Needle) Bytes() []byte {
-	return n.internal[:]
+	b := make([]byte, MessageLength)
+	copy(b[:KeyLength], n.eye[:])
+	copy(b[KeyLength:], n.shaft[:])
+	return b
 }
 
 func (n Needle) ValidateHash() error {
-	s := blake2b.Sum256(n.Value())
-	if subtle.ConstantTimeCompare(s[:], n.Key()) == 0 {
+	s := blake2b.Sum256(n.Shaft())
+	if subtle.ConstantTimeCompare(s[:], n.Eye()) == 0 {
 		return ErrInvalidHash
 	}
 	return nil
