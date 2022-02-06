@@ -18,13 +18,12 @@ type Server struct {
 }
 
 type Storage interface {
-	Get(e needle.Eye) (needle.Needle, error)
-	Put(n needle.Needle) error
+	Find(e needle.Eye) (needle.Needle, error)
+	Write(n needle.Needle) error
 	Delete(e needle.Eye) error
 }
 
 func New() (*Server, error) {
 	s := Server{}
-
 	return &s, nil
 }

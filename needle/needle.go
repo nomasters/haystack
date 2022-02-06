@@ -30,6 +30,13 @@ type Needle struct {
 	shaft Shaft
 }
 
+func New(s Shaft) *Needle {
+	return &Needle{
+		eye:   blake2b.Sum256(s[:]),
+		shaft: s,
+	}
+}
+
 // FromBytes takes a byte slice and expects it to be exactly the length of MessageLength.
 func FromBytes(b []byte) (*Needle, error) {
 	var e Eye
@@ -59,8 +66,8 @@ func (n Needle) Bytes() []byte {
 }
 
 func (n Needle) ValidateHash() error {
-	s := blake2b.Sum256(n.Shaft())
-	if subtle.ConstantTimeCompare(s[:], n.Eye()) == 0 {
+	h := blake2b.Sum256(n.Shaft())
+	if subtle.ConstantTimeCompare(h[:], n.Eye()) == 0 {
 		return ErrInvalidHash
 	}
 	return nil
