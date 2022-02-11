@@ -3,17 +3,21 @@ package needle
 import (
 	"crypto/subtle"
 	"errors"
+	"math"
 
 	"golang.org/x/crypto/blake2b"
 )
 
 const (
-	// MessageLength is the number of bytes required for a write message
-	MessageLength = 480
-	// KeyLength is the length in bytes of the key prefix in any message
-	KeyLength = 32
-	// ValueLength is the length of the remaining bytes of the message after the KeyLength is subtracked out.
-	ValueLength = MessageLength - KeyLength
+	// EyeLen is the length in bytes of the key prefix in any message
+	EyeLen = 32
+	// ShaftLen is the length of the remaining bytes of the message.
+	ShaftLen = 448
+	// NeedleLen is the number of bytes required for a needle
+	NeedleLen = EyeLen + ShaftLen
+	// entropyThreshold is the threshold in which the entropy validation
+	// fails
+	entropyThreshold = 0.91
 )
 
 var (
@@ -23,8 +27,8 @@ var (
 	ErrInvalidEntropy  = errors.New("entropy does meet the minimum threshold")
 )
 
-type Eye [KeyLength]byte
-type Shaft [ValueLength]byte
+type Eye [EyeLen]byte
+type Shaft [ShaftLen]byte
 
 type Needle struct {
 	eye   Eye
@@ -45,8 +49,8 @@ func FromBytes(b []byte) (*Needle, error) {
 	if err := validateLength(len(b)); err != nil {
 		return nil, err
 	}
-	copy(e[:], b[:KeyLength])
-	copy(s[:], b[KeyLength:])
+	copy(e[:], b[:EyeLen])
+	copy(s[:], b[EyeLen:])
 	n := Needle{eye: e, shaft: s}
 	return &n, n.Validate()
 }
@@ -60,9 +64,9 @@ func (n Needle) Shaft() []byte {
 }
 
 func (n Needle) Bytes() []byte {
-	b := make([]byte, MessageLength)
-	copy(b[:KeyLength], n.eye[:])
-	copy(b[KeyLength:], n.shaft[:])
+	b := make([]byte, NeedleLen)
+	copy(b[:EyeLen], n.eye[:])
+	copy(b[EyeLen:], n.shaft[:])
 	return b
 }
 
@@ -76,9 +80,8 @@ func (n Needle) Validate() error {
 	return nil
 }
 
-// TBD: measure entropy of the shaft and return a boolean value
 func (n Needle) validEntropy() bool {
-	return true
+	return entropy(n.shaft) > entropyThreshold
 }
 
 func (n Needle) validHash() bool {
@@ -87,11 +90,28 @@ func (n Needle) validHash() bool {
 }
 
 func validateLength(l int) error {
-	if l < MessageLength {
+	if l < NeedleLen {
 		return ErrMessageTooShort
 	}
-	if l > MessageLength {
+	if l > NeedleLen {
 		return ErrMessageTooLong
 	}
 	return nil
+}
+
+// entropy runs Shannon's entropy on a needle Shaft
+// this returns a number between 0 and 1
+func entropy(s Shaft) float64 {
+	// entropy
+	var e float64
+	// map of byte frequencies
+	f := make(map[byte]float64)
+	for _, b := range s {
+		f[b] += 1
+	}
+	for _, v := range f {
+		freq := v / ShaftLen
+		e += freq * math.Log2(freq)
+	}
+	return -e / 8
 }
