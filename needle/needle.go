@@ -20,6 +20,7 @@ var (
 	ErrMessageTooShort = errors.New("message too short")
 	ErrMessageTooLong  = errors.New("message too long")
 	ErrInvalidHash     = errors.New("invalid hash")
+	ErrInvalidEntropy  = errors.New("entropy does meet the minimum threshold")
 )
 
 type Eye [KeyLength]byte
@@ -47,7 +48,7 @@ func FromBytes(b []byte) (*Needle, error) {
 	copy(e[:], b[:KeyLength])
 	copy(s[:], b[KeyLength:])
 	n := Needle{eye: e, shaft: s}
-	return &n, n.ValidateHash()
+	return &n, n.Validate()
 }
 
 func (n Needle) Eye() []byte {
@@ -65,12 +66,24 @@ func (n Needle) Bytes() []byte {
 	return b
 }
 
-func (n Needle) ValidateHash() error {
-	h := blake2b.Sum256(n.Shaft())
-	if subtle.ConstantTimeCompare(h[:], n.Eye()) == 0 {
+func (n Needle) Validate() error {
+	if !n.validHash() {
 		return ErrInvalidHash
 	}
+	if !n.validEntropy() {
+		return ErrInvalidEntropy
+	}
 	return nil
+}
+
+// TBD: measure entropy of the shaft and return a boolean value
+func (n Needle) validEntropy() bool {
+	return true
+}
+
+func (n Needle) validHash() bool {
+	h := blake2b.Sum256(n.Shaft())
+	return subtle.ConstantTimeCompare(h[:], n.Eye()) == 1
 }
 
 func validateLength(l int) error {
