@@ -93,19 +93,18 @@ func validateLength(l int) error {
 	return nil
 }
 
-// entropy runs Shannon's entropy on a needle Shaft
-// this returns a number between 0 and 1
+// entropy runs Shannon's entropy algorith
+// and returns a float64 score between 0 and 1
 func entropy(b []byte) float64 {
-	// entropy
-	var e float64
-	// map of byte frequencies
-	f := make(map[byte]float64)
-	for _, b := range b {
-		f[b] += 1
+	var entropy float64
+	l := float64(len(b))
+	freqMap := make(map[byte]float64)
+	for _, v := range b {
+		freqMap[v] += 1
 	}
-	for _, v := range f {
-		freq := v / float64(len(b))
-		e += freq * math.Log2(freq)
+	for _, v := range freqMap {
+		freq := v / l
+		entropy += freq * math.Log2(freq)
 	}
-	return -e / 8
+	return -entropy / 8
 }
