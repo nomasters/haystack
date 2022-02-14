@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	// EyeLen is the length in bytes of the key prefix in any message
+	// EyeLen is the length in bytes of the hash prefix in any message
 	EyeLen = 32
 	// ShaftLen is the length of the remaining bytes of the message.
 	ShaftLen = 448
@@ -31,43 +31,37 @@ type Eye [EyeLen]byte
 type Shaft [ShaftLen]byte
 
 type Needle struct {
-	eye   Eye
-	shaft Shaft
+	n [NeedleLen]byte
 }
 
-func New(s Shaft) *Needle {
-	return &Needle{
-		eye:   blake2b.Sum256(s[:]),
-		shaft: s,
-	}
+func New(s Shaft) (*Needle, error) {
+	var n Needle
+	h := blake2b.Sum256(s[:])
+	copy(n.n[:EyeLen], h[:])
+	copy(n.n[EyeLen:], s[:])
+	return &n, n.Validate()
 }
 
 // FromBytes takes a byte slice and expects it to be exactly the length of MessageLength.
 func FromBytes(b []byte) (*Needle, error) {
-	var e Eye
-	var s Shaft
+	var n Needle
 	if err := validateLength(len(b)); err != nil {
 		return nil, err
 	}
-	copy(e[:], b[:EyeLen])
-	copy(s[:], b[EyeLen:])
-	n := Needle{eye: e, shaft: s}
+	copy(n.n[:], b)
 	return &n, n.Validate()
 }
 
 func (n Needle) Eye() []byte {
-	return n.eye[:]
+	return n.n[:EyeLen]
 }
 
 func (n Needle) Shaft() []byte {
-	return n.shaft[:]
+	return n.n[EyeLen:]
 }
 
 func (n Needle) Bytes() []byte {
-	b := make([]byte, NeedleLen)
-	copy(b[:EyeLen], n.eye[:])
-	copy(b[EyeLen:], n.shaft[:])
-	return b
+	return n.n[:]
 }
 
 func (n Needle) Validate() error {
@@ -81,7 +75,7 @@ func (n Needle) Validate() error {
 }
 
 func (n Needle) validEntropy() bool {
-	return entropy(n.shaft) > entropyThreshold
+	return entropy(n.n[EyeLen:]) > entropyThreshold
 }
 
 func (n Needle) validHash() bool {
@@ -101,16 +95,16 @@ func validateLength(l int) error {
 
 // entropy runs Shannon's entropy on a needle Shaft
 // this returns a number between 0 and 1
-func entropy(s Shaft) float64 {
+func entropy(b []byte) float64 {
 	// entropy
 	var e float64
 	// map of byte frequencies
 	f := make(map[byte]float64)
-	for _, b := range s {
+	for _, b := range b {
 		f[b] += 1
 	}
 	for _, v := range f {
-		freq := v / ShaftLen
+		freq := v / float64(len(b))
 		e += freq * math.Log2(freq)
 	}
 	return -e / 8

@@ -30,7 +30,7 @@ func TestEntropy(t *testing.T) {
 		copy(s[:24], lookup[:])
 		copy(s[24:], encrypted[:])
 
-		e := entropy(s)
+		e := entropy(s[:])
 		k := fmt.Sprintf("%.2f", e)
 		freq[k] += 1
 	}
