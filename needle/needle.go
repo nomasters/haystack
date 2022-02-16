@@ -2,7 +2,7 @@ package needle
 
 import (
 	"crypto/subtle"
-	"errors"
+	"fmt"
 	"math"
 
 	"golang.org/x/crypto/blake2b"
@@ -15,17 +15,8 @@ const (
 	PayloadLength = 448
 	// NeedleLength is the number of bytes required for a valid needle.
 	NeedleLength = HashLength + PayloadLength
-	// EntropyThreshold is the minimum threshold of the payload's entropy allowed
-	// by the Needle validator
+	// EntropyThreshold is the minimum threshold of the payload's entropy allowed by the Needle validator
 	EntropyThreshold = 0.90
-)
-
-var (
-	ErrTooManyBytes       = errors.New("too many bytes submitted")
-	ErrTooFewBytes        = errors.New("too few bytes submitted")
-	ErrInvalidHash        = errors.New("invalid hash")
-	ErrInvalidEntropy     = errors.New("entropy does meet the minimum threshold")
-	ErrInvalidContentType = errors.New("invalid content type")
 )
 
 type payload [PayloadLength]byte
@@ -67,7 +58,7 @@ func FromBytes(b []byte) (*Needle, error) {
 	return &n, n.validate()
 }
 
-// Hash returns a copy of the bytes of the blake2b hash of the Needle payload.
+// Hash returns a copy of the bytes of the blake2b 256 hash of the Needle payload.
 func (n Needle) Hash() []byte {
 	return n.internal[:HashLength]
 }
@@ -82,43 +73,34 @@ func (n Needle) Bytes() []byte {
 	return n.internal[:]
 }
 
-// Entropy is the Shannon Entropy score for the message payload, known as the Needle shaft.
-func (n *Needle) Entropy() float64 {
+// Entropy is the Shannon Entropy score for the message payload.
+func (n Needle) Entropy() float64 {
 	var p payload
 	copy(p[:], n.internal[HashLength:])
 	return entropy(&p)
 }
 
-// validate checks that a Needle has a valid hash and meetings the entropy
-// threshold, it returns an error.
+// validate checks that a Needle has a valid hash and that it meets the entropy
+// threshold, it returns either nil or an error.
 func (n *Needle) validate() error {
-	if !n.validHash() {
-		return ErrInvalidHash
+	if h := blake2b.Sum256(n.Payload()); subtle.ConstantTimeCompare(h[:], n.Hash()) == 0 {
+		return fmt.Errorf("invalid blake2b-256 hash")
 	}
-	if !n.validEntropy() {
-		return ErrInvalidEntropy
+	if score := n.Entropy(); score < EntropyThreshold {
+		return fmt.Errorf("entropy score: %v, expected score > %v", score, EntropyThreshold)
 	}
 	return nil
 }
 
-func (n *Needle) validEntropy() bool {
-	return n.Entropy() > EntropyThreshold
-}
-
-func (n *Needle) validHash() bool {
-	h := blake2b.Sum256(n.Payload())
-	return subtle.ConstantTimeCompare(h[:], n.Hash()) == 1
-}
-
 // validateLength takes two arguments, a byte slice and its required
 // length. It returns an error if the length is too long or too short.
-func validateLength(b []byte, required int) error {
+func validateLength(b []byte, expected int) error {
 	l := len(b)
-	if l < required {
-		return ErrTooFewBytes
+	if l < expected {
+		return fmt.Errorf("too few bytes, expected: %v", expected)
 	}
-	if l > required {
-		return ErrTooManyBytes
+	if l > expected {
+		return fmt.Errorf("too many bytes, expected: %v", expected)
 	}
 	return nil
 }
@@ -129,7 +111,7 @@ func entropy(p *payload) float64 {
 	var entropy float64
 	freqMap := make(map[byte]float64)
 	for _, v := range p {
-		freqMap[v] += 1
+		freqMap[v]++
 	}
 	for _, v := range freqMap {
 		freq := v / PayloadLength
