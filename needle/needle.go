@@ -22,7 +22,7 @@ const (
 type payload [PayloadLength]byte
 
 // Needle is an immutable container for a [480]byte array that containers a 448 byte payload
-// and a 32 byte blak2b hash of the payload.
+// and a 32 byte blake2b hash of the payload.
 type Needle struct {
 	internal [NeedleLength]byte
 }
@@ -45,7 +45,7 @@ func New(payload []byte) (*Needle, error) {
 
 // FromBytes is intended convert raw bytes (from UDP or storage) into a Needle.
 // It takes a byte slice and expects it to be exactly the length of NeedleLength.
-// The byteslice shoudl consist of the first 32 bytes being the blake2b hash of the
+// The byteslice should consist of the first 32 bytes being the blake2b hash of the
 // payload and the payload bytes. This function verifies the length of the byte slice,
 // copies the bytes into a private [480]byte array, and validates the Needle. It returns
 // a reference to a Needle and an error.
@@ -105,7 +105,7 @@ func validateLength(b []byte, expected int) error {
 	return nil
 }
 
-// entropy runs Shannon's entropy algorith
+// entropy runs Shannon's entropy algorithm
 // and returns a float64 score between 0 and 1
 func entropy(p *payload) float64 {
 	var entropy float64
