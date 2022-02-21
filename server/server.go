@@ -3,8 +3,12 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
+	"os"
+	"os/signal"
 	"runtime"
+	"time"
 
 	"github.com/nomasters/haystack/storage"
 )
@@ -49,16 +53,43 @@ func (s *Server) Run() error {
 		return err
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	errChan := make(chan error)
+	stopSig := make(chan os.Signal, 1)
+	signal.Notify(stopSig, os.Interrupt)
+
+	defer func() {
+		signal.Stop(stopSig)
+	}()
+
+	doneChan := make(chan struct{}, s.Workers)
+
 	for i := 0; i < s.Workers; i++ {
-		go worker(ctx, i, conn, errChan)
+		go worker(ctx, i, conn, doneChan)
 	}
-	err = <-errChan
-	return err
+
+	<-stopSig
+	gracefulShutdown(cancel, doneChan, s.Workers)
+	return nil
 }
 
-func worker(ctx context.Context, id int, conn *net.UDPConn, errChan chan error) {
+func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected int) {
+	cancel()
+	complete := false
+	go func() {
+		time.Sleep(2 * time.Second)
+		if !complete {
+			log.Println("failed to gracefully exit")
+			os.Exit(1)
+		}
+	}()
+
+	for i := 0; i < expected; i++ {
+		<-done
+	}
+	complete = true
+	log.Println("graceful exit")
+}
+
+func worker(ctx context.Context, id int, conn *net.UDPConn, done chan<- struct{}) {
 	// 481 byte buffer allows us to see if the message
 	// is larger than 480 bytes
 	buffer := make([]byte, 481)
@@ -69,17 +100,19 @@ func worker(ctx context.Context, id int, conn *net.UDPConn, errChan chan error) 
 	for {
 		select {
 		case <-ctx.Done():
+			done <- struct{}{}
 			return
 		default:
 			n, addr, err = conn.ReadFromUDP(buffer)
 			if err != nil {
-				errChan <- err
+				// todo create structured error
+				log.Printf("work %v error: %v", id, err)
 				return
 			}
 			msg := fmt.Sprintf("worker: %v, message of length: %v received:\n%x", id, n, buffer)
 			_, err := conn.WriteToUDP([]byte(msg), addr)
 			if err != nil {
-				errChan <- fmt.Errorf("Couldn't send response %v", err)
+				log.Printf("Couldn't send response %v", err)
 			}
 		}
 	}

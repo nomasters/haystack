@@ -40,7 +40,7 @@ func main() {
 		go worker(taskChan, conn)
 	}
 
-	for i := 0; i < 100000; i++ {
+	for i := 0; i < 500000; i++ {
 		taskChan <- task{
 			payload: []byte("hello, world"),
 			mu:      &mu,
@@ -62,7 +62,7 @@ func processJob(j task, conn *net.UDPConn) {
 	j.wg.Add(1)
 	defer j.wg.Done()
 	p := make([]byte, 12)
-	conn.WriteMsgUDP(j.payload, nil, nil)
+	conn.Write(j.payload)
 	_, err := bufio.NewReader(conn).Read(p)
 	if err == nil {
 		j.mu.Lock()
