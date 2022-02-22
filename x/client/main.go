@@ -27,7 +27,7 @@ func main() {
 		fmt.Println(err)
 		return
 	}
-	// defer conn.Close()
+	defer conn.Close()
 
 	counter := 0
 
@@ -40,9 +40,9 @@ func main() {
 		go worker(taskChan, conn)
 	}
 
-	for i := 0; i < 500000; i++ {
+	for i := 0; i < 130000; i++ {
 		taskChan <- task{
-			payload: []byte("hello, world"),
+			payload: make([]byte, 480),
 			mu:      &mu,
 			wg:      &wg,
 			counter: &counter,
@@ -61,7 +61,7 @@ func worker(job chan task, conn *net.UDPConn) {
 func processJob(j task, conn *net.UDPConn) {
 	j.wg.Add(1)
 	defer j.wg.Done()
-	p := make([]byte, 12)
+	p := make([]byte, 480)
 	conn.Write(j.payload)
 	_, err := bufio.NewReader(conn).Read(p)
 	if err == nil {

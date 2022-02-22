@@ -31,6 +31,12 @@ type Server struct {
 	Workers  int
 }
 
+type request struct {
+	payload []byte
+	addr    *net.UDPAddr
+	conn    *net.UDPConn
+}
+
 // New returns a reference to a new Server struct
 func New() (*Server, error) {
 	s := Server{
@@ -52,6 +58,24 @@ func (s *Server) Run() error {
 	if err != nil {
 		return err
 	}
+
+	reqChan := make(chan request, 100000)
+
+	go func() {
+		buffer := make([]byte, 481)
+		for {
+			n, radder, err := conn.ReadFromUDP(buffer)
+			if err != nil {
+				log.Printf("read error: %v", err)
+			}
+			if !(n == 480 || n == 32) {
+				log.Println("invalid length", n)
+			} else {
+				reqChan <- request{payload: buffer, addr: radder, conn: conn}
+			}
+		}
+	}()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	stopSig := make(chan os.Signal, 1)
 	signal.Notify(stopSig, os.Interrupt)
@@ -63,7 +87,7 @@ func (s *Server) Run() error {
 	doneChan := make(chan struct{}, s.Workers)
 
 	for i := 0; i < s.Workers; i++ {
-		go worker(ctx, i, conn, doneChan)
+		go requestWorker(ctx, i, reqChan, doneChan)
 	}
 
 	<-stopSig
@@ -89,31 +113,24 @@ func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected 
 	log.Println("graceful exit")
 }
 
-func worker(ctx context.Context, id int, conn *net.UDPConn, done chan<- struct{}) {
-	// 481 byte buffer allows us to see if the message
-	// is larger than 480 bytes
-	buffer := make([]byte, 481)
-	var n int
-	var addr *net.UDPAddr
-	var err error
-
+func requestWorker(ctx context.Context, id int, req <-chan request, done chan<- struct{}) {
 	for {
 		select {
 		case <-ctx.Done():
 			done <- struct{}{}
 			return
-		default:
-			n, addr, err = conn.ReadFromUDP(buffer)
-			if err != nil {
-				// todo create structured error
-				log.Printf("work %v error: %v", id, err)
-				return
-			}
-			msg := fmt.Sprintf("worker: %v, message of length: %v received:\n%x", id, n, buffer)
-			_, err := conn.WriteToUDP([]byte(msg), addr)
-			if err != nil {
-				log.Printf("Couldn't send response %v", err)
-			}
+		case r := <-req:
+			go func(r request) {
+				// TODO:
+				// - sort out read or write request
+				// - interact with storage layer
+				// - respond with data
+				msg := fmt.Sprintf("worker: %v received message", id)
+				_, err := r.conn.WriteToUDP([]byte(msg), r.addr)
+				if err != nil {
+					log.Printf("Couldn't send response %v", err)
+				}
+			}(r)
 		}
 	}
 }
