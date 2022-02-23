@@ -6,6 +6,7 @@ import (
 	"net"
 	"runtime"
 	"sync"
+	"time"
 )
 
 type task struct {
@@ -40,7 +41,11 @@ func main() {
 		go worker(taskChan, conn)
 	}
 
-	for i := 0; i < 130000; i++ {
+	t1 := time.Now()
+
+	reqCount := 100000
+
+	for i := 0; i < reqCount; i++ {
 		taskChan <- task{
 			payload: make([]byte, 480),
 			mu:      &mu,
@@ -49,7 +54,9 @@ func main() {
 		}
 	}
 	wg.Wait()
-	fmt.Println("count:", counter)
+	t2 := time.Now()
+	d := t2.Sub(t1)
+	fmt.Println("count:", counter, float64(reqCount)/d.Seconds())
 }
 
 func worker(job chan task, conn *net.UDPConn) {
