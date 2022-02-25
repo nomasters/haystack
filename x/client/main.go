@@ -43,7 +43,7 @@ func main() {
 
 	t1 := time.Now()
 
-	reqCount := 300000
+	reqCount := 3
 
 	for i := 0; i < reqCount; i++ {
 		taskChan <- task{

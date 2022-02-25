@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -12,6 +11,7 @@ import (
 
 	"github.com/nomasters/haystack/needle"
 	"github.com/nomasters/haystack/storage"
+	"github.com/nomasters/haystack/storage/memory"
 )
 
 // TODO investigate multicast
@@ -39,11 +39,14 @@ type request struct {
 
 // New returns a reference to a new Server struct
 func New() (*Server, error) {
+	memoryStore := memory.New()
+
 	s := Server{
 		Address:  ":1337",
 		TTL:      500,
 		Protocol: "udp",
 		Workers:  runtime.NumCPU(),
+		Storage:  memoryStore,
 	}
 	return &s, nil
 }
@@ -72,7 +75,7 @@ func (s *Server) Run() error {
 	doneChan := make(chan struct{}, s.Workers)
 
 	for i := 0; i < s.Workers; i++ {
-		go worker(ctx, i, conn, reqChan, doneChan)
+		go worker(ctx, s.Storage, conn, reqChan, doneChan)
 	}
 
 	<-stopSig
@@ -113,17 +116,22 @@ func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected 
 	log.Println("graceful exit")
 }
 
-func worker(ctx context.Context, id int, conn *net.UDPConn, reqChan <-chan *request, done chan<- struct{}) {
+func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, reqChan <-chan *request, done chan<- struct{}) {
 	for {
 		select {
 		case <-ctx.Done():
 			done <- struct{}{}
 			return
 		case r := <-reqChan:
-			msg := fmt.Sprintf("worker: %v received message", id)
-			_, err := conn.WriteToUDP([]byte(msg), r.addr)
-			if err != nil {
-				log.Printf("Couldn't send response %v", err)
+			switch len(r.payload) {
+			case 32:
+				if err := handleHash(conn, r, storage); err != nil {
+					log.Println(err)
+				}
+			case 480:
+				if err := handleNeedle(conn, r, storage); err != nil {
+					log.Println(err)
+				}
 			}
 			// go func(r request) {
 			// 	// TODO:
@@ -140,12 +148,21 @@ func worker(ctx context.Context, id int, conn *net.UDPConn, reqChan <-chan *requ
 	}
 }
 
-func handleHash(conn *net.UDPConn, r *request) error {
-	// TODO: call storage engine,
-	// TODO: return
-	return nil
+func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
+	var hash [32]byte
+	copy(hash[:], r.payload)
+	n, err := s.Get(hash)
+	if err != nil {
+		return err
+	}
+	_, err = conn.WriteToUDP(n.Bytes(), r.addr)
+	return err
 }
 
-func handleNeedle(conn *net.UDPConn, r *request) error {
-	return nil
+func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
+	if _, err := s.Write(r.payload); err != nil {
+		return err
+	}
+	_, err := conn.WriteToUDP([]byte("success"), r.addr)
+	return err
 }
