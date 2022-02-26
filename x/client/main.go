@@ -2,11 +2,14 @@ package main
 
 import (
 	"bufio"
+	"crypto/rand"
 	"fmt"
 	"net"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/nomasters/haystack/needle"
 )
 
 type task struct {
@@ -41,13 +44,16 @@ func main() {
 		go worker(taskChan, conn)
 	}
 
-	t1 := time.Now()
+	reqCount := 100000
 
-	reqCount := 3
+	p := make([]byte, 448)
+	rand.Read(p)
+	n, _ := needle.New(p)
+	t1 := time.Now()
 
 	for i := 0; i < reqCount; i++ {
 		taskChan <- task{
-			payload: make([]byte, 480),
+			payload: n.Bytes(),
 			mu:      &mu,
 			wg:      &wg,
 			counter: &counter,

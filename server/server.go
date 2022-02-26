@@ -85,6 +85,7 @@ func (s *Server) Run() error {
 
 func newListener(conn *net.UDPConn, reqChan chan<- *request) {
 	buffer := make([]byte, 481)
+
 	for {
 		n, radder, err := conn.ReadFromUDP(buffer)
 		if err != nil {
@@ -93,7 +94,7 @@ func newListener(conn *net.UDPConn, reqChan chan<- *request) {
 		if !(n == needle.NeedleLength || n == needle.HashLength) {
 			log.Println("invalid length", n)
 		} else {
-			reqChan <- &request{payload: buffer, addr: radder}
+			reqChan <- &request{payload: buffer[:n], addr: radder}
 		}
 	}
 }
