@@ -54,6 +54,6 @@ func (s *Store) Get(hash [32]byte) (*needle.Needle, error) {
 func New() *Store {
 	return &Store{
 		m:   make(map[[32]byte][448]byte),
-		ttl: 5 * time.Second,
+		ttl: 5 * time.Hour,
 	}
 }
