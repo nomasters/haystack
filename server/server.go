@@ -161,6 +161,7 @@ func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
 }
 
 func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
+
 	if _, err := s.Write(r.payload); err != nil {
 		return err
 	}

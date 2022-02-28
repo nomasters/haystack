@@ -32,14 +32,11 @@ type Needle struct {
 // Needle and an error. The purpose of this function is to make it
 // easy to create a new Needle from a payload. This function handles creating a blake2b
 // hash of the payload, which is used by the Needle to submit to a haystack server.
-func New(payload []byte) (*Needle, error) {
+func New(payload [PayloadLength]byte) (*Needle, error) {
 	var n Needle
-	if err := validateLength(payload, PayloadLength); err != nil {
-		return nil, err
-	}
-	h := blake2b.Sum256(payload)
+	h := blake2b.Sum256(payload[:])
 	copy(n.internal[:HashLength], h[:])
-	copy(n.internal[HashLength:], payload)
+	copy(n.internal[HashLength:], payload[:])
 	return &n, n.validate()
 }
 
@@ -59,13 +56,15 @@ func FromBytes(b []byte) (*Needle, error) {
 }
 
 // Hash returns a copy of the bytes of the blake2b 256 hash of the Needle payload.
-func (n Needle) Hash() []byte {
-	return n.internal[:HashLength]
+func (n Needle) Hash() (h [HashLength]byte) {
+	copy(h[:], n.internal[:HashLength])
+	return h
 }
 
 // Payload returns a byte slice of the Needle payload
-func (n Needle) Payload() []byte {
-	return n.internal[HashLength:]
+func (n Needle) Payload() (p [PayloadLength]byte) {
+	copy(p[:], n.internal[HashLength:])
+	return p
 }
 
 // Bytes returns a byte slice of the entire 480 byte hash + payload
@@ -83,7 +82,9 @@ func (n Needle) Entropy() float64 {
 // validate checks that a Needle has a valid hash and that it meets the entropy
 // threshold, it returns either nil or an error.
 func (n *Needle) validate() error {
-	if h := blake2b.Sum256(n.Payload()); subtle.ConstantTimeCompare(h[:], n.Hash()) == 0 {
+	payload := n.Payload()
+	hash := n.Hash()
+	if h := blake2b.Sum256(payload[:]); subtle.ConstantTimeCompare(h[:], hash[:]) == 0 {
 		return fmt.Errorf("invalid blake2b-256 hash")
 	}
 	if score := n.Entropy(); score < EntropyThreshold {
