@@ -8,6 +8,10 @@ import (
 	"github.com/nomasters/haystack/storage"
 )
 
+const (
+	headroom = 2
+)
+
 type value struct {
 	payload    [448]byte
 	expiration time.Time
@@ -24,7 +28,7 @@ type Store struct {
 	internal   map[[32]byte]value
 	ttl        time.Duration
 	deleteChan chan task
-	maxItems   uint64
+	maxItems   int
 }
 
 func (s *Store) Write(b []byte) (int, error) {
@@ -64,17 +68,16 @@ func (s *Store) Get(hash [32]byte) (*needle.Needle, error) {
 func New() *Store {
 	s := Store{
 		internal: make(map[[32]byte]value),
-		ttl:      5 * time.Hour,
+		ttl:      10 * time.Second,
 		maxItems: 2000,
 	}
 
 	go func(s *Store) {
-		c := make(chan task, 3000)
-		s.deleteChan = c
+		s.deleteChan = make(chan task, s.maxItems*headroom)
 		for {
 			task := <-s.deleteChan
 			for {
-				if (len(c) > int(s.maxItems)) || (task.expiration.Before(time.Now())) {
+				if (len(s.deleteChan) > s.maxItems) || (task.expiration.Before(time.Now())) {
 					s.Lock()
 					v := s.internal[task.hash]
 					if v.expiration.Equal(task.expiration) {

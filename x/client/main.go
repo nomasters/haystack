@@ -42,7 +42,7 @@ func main() {
 		go worker(taskChan, conn)
 	}
 
-	reqCount := 50000
+	reqCount := 10000
 
 	// p := make([]byte, 448)
 	// rand.Read(p)

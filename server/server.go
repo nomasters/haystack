@@ -134,17 +134,6 @@ func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, req
 					log.Println(err)
 				}
 			}
-			// go func(r request) {
-			// 	// TODO:
-			// 	// - sort out read or write request
-			// 	// - interact with storage layer
-			// 	// - respond with data
-			// 	msg := fmt.Sprintf("worker: %v received message", id)
-			// 	_, err := r.conn.WriteToUDP([]byte(msg), r.addr)
-			// 	if err != nil {
-			// 		log.Printf("Couldn't send response %v", err)
-			// 	}
-			// }(r)
 		}
 	}
 }
@@ -161,7 +150,6 @@ func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
 }
 
 func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
-
 	if _, err := s.Write(r.payload); err != nil {
 		return err
 	}
