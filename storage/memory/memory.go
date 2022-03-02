@@ -17,18 +17,18 @@ type value struct {
 	expiration time.Time
 }
 
-type task struct {
+type cleanup struct {
 	hash       [32]byte
 	expiration time.Time
 }
 
-// Store is a map of [32]byte key and a struct value
+// Store is a struct that holds the in memory storage state
 type Store struct {
 	sync.RWMutex
-	internal   map[[32]byte]value
-	ttl        time.Duration
-	deleteChan chan task
-	maxItems   int
+	internal map[[32]byte]value
+	ttl      time.Duration
+	cleanups chan cleanup
+	maxItems int
 }
 
 func (s *Store) Write(b []byte) (int, error) {
@@ -45,8 +45,8 @@ func (s *Store) Write(b []byte) (int, error) {
 		expiration: expiration,
 	}
 	s.Unlock()
-	// clean up after ttl
-	s.deleteChan <- task{
+	// clean task to handle expiration
+	s.cleanups <- cleanup{
 		hash:       hash,
 		expiration: expiration,
 	}
@@ -73,11 +73,11 @@ func New() *Store {
 	}
 
 	go func(s *Store) {
-		s.deleteChan = make(chan task, s.maxItems*headroom)
+		s.cleanups = make(chan cleanup, s.maxItems*headroom)
 		for {
-			task := <-s.deleteChan
+			task := <-s.cleanups
 			for {
-				if (len(s.deleteChan) > s.maxItems) || (task.expiration.Before(time.Now())) {
+				if (len(s.cleanups) > s.maxItems) || (task.expiration.Before(time.Now())) {
 					s.Lock()
 					v := s.internal[task.hash]
 					if v.expiration.Equal(task.expiration) {
