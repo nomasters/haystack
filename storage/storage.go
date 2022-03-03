@@ -2,7 +2,6 @@ package storage
 
 import (
 	"errors"
-	"io"
 	"time"
 
 	"github.com/nomasters/haystack/needle"
@@ -20,6 +19,6 @@ var (
 
 // Storage is a simple interface to interact with storage.
 type Storage interface {
-	io.Writer
 	Get(hash [32]byte) (*needle.Needle, error)
+	Set(needle *needle.Needle) error
 }

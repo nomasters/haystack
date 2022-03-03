@@ -33,8 +33,8 @@ type Server struct {
 }
 
 type request struct {
-	payload []byte
-	addr    *net.UDPAddr
+	body []byte
+	addr *net.UDPAddr
 }
 
 // New returns a reference to a new Server struct
@@ -94,7 +94,7 @@ func newListener(conn *net.UDPConn, reqChan chan<- *request) {
 		if !(n == needle.NeedleLength || n == needle.HashLength) {
 			log.Println("invalid length", n)
 		} else {
-			reqChan <- &request{payload: buffer[:n], addr: radder}
+			reqChan <- &request{body: buffer[:n], addr: radder}
 		}
 	}
 }
@@ -124,7 +124,7 @@ func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, req
 			done <- struct{}{}
 			return
 		case r := <-reqChan:
-			switch len(r.payload) {
+			switch len(r.body) {
 			case 32:
 				if err := handleHash(conn, r, storage); err != nil {
 					log.Println(err)
@@ -140,7 +140,7 @@ func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, req
 
 func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
 	var hash [32]byte
-	copy(hash[:], r.payload)
+	copy(hash[:], r.body)
 	n, err := s.Get(hash)
 	if err != nil {
 		return err
@@ -150,9 +150,13 @@ func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
 }
 
 func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
-	if _, err := s.Write(r.payload); err != nil {
+	n, err := needle.FromBytes(r.body)
+	if err != nil {
 		return err
 	}
-	_, err := conn.WriteToUDP([]byte("success"), r.addr)
+	if err := s.Set(n); err != nil {
+		return err
+	}
+	_, err = conn.WriteToUDP([]byte("success"), r.addr)
 	return err
 }

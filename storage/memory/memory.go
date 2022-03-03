@@ -31,11 +31,8 @@ type Store struct {
 	maxItems int
 }
 
-func (s *Store) Write(b []byte) (int, error) {
-	n, err := needle.FromBytes(b)
-	if err != nil {
-		return 0, err
-	}
+// Set takes a needle and writes it to the memory store.
+func (s *Store) Set(n *needle.Needle) error {
 	hash := n.Hash()
 	payload := n.Payload()
 	expiration := time.Now().Add(s.ttl)
@@ -45,12 +42,11 @@ func (s *Store) Write(b []byte) (int, error) {
 		expiration: expiration,
 	}
 	s.Unlock()
-	// clean task to handle expiration
 	s.cleanups <- cleanup{
 		hash:       hash,
 		expiration: expiration,
 	}
-	return needle.NeedleLength, nil
+	return nil
 }
 
 // Get takes a 32 byte hash and returns a pointer to a needle and an error
@@ -71,9 +67,9 @@ func New() *Store {
 		ttl:      10 * time.Second,
 		maxItems: 2000,
 	}
+	s.cleanups = make(chan cleanup, s.maxItems*headroom)
 
 	go func(s *Store) {
-		s.cleanups = make(chan cleanup, s.maxItems*headroom)
 		for {
 			task := <-s.cleanups
 			for {
