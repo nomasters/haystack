@@ -13,19 +13,19 @@ const (
 )
 
 type value struct {
-	payload    [448]byte
+	payload    needle.Payload
 	expiration time.Time
 }
 
 type cleanup struct {
-	hash       [32]byte
+	hash       needle.Hash
 	expiration time.Time
 }
 
 // Store is a struct that holds the in memory storage state
 type Store struct {
 	sync.RWMutex
-	internal map[[32]byte]value
+	internal map[needle.Hash]value
 	ttl      time.Duration
 	cleanups chan cleanup
 	maxItems int
@@ -50,7 +50,7 @@ func (s *Store) Set(n *needle.Needle) error {
 }
 
 // Get takes a 32 byte hash and returns a pointer to a needle and an error
-func (s *Store) Get(hash [32]byte) (*needle.Needle, error) {
+func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 	s.RLock()
 	v, ok := s.internal[hash]
 	s.RUnlock()
@@ -63,7 +63,7 @@ func (s *Store) Get(hash [32]byte) (*needle.Needle, error) {
 // New returns a pointer to a Store
 func New() *Store {
 	s := Store{
-		internal: make(map[[32]byte]value),
+		internal: make(map[needle.Hash]value),
 		ttl:      10 * time.Second,
 		maxItems: 2000,
 	}

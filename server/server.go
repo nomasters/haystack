@@ -84,17 +84,17 @@ func (s *Server) Run() error {
 }
 
 func newListener(conn *net.UDPConn, reqChan chan<- *request) {
-	buffer := make([]byte, 481)
+	buffer := make([]byte, needle.NeedleLength+1)
 
 	for {
 		n, radder, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			log.Printf("read error: %v", err)
 		}
-		if !(n == needle.NeedleLength || n == needle.HashLength) {
-			log.Println("invalid length", n)
-		} else {
+		if n == needle.NeedleLength || n == needle.HashLength {
 			reqChan <- &request{body: buffer[:n], addr: radder}
+		} else {
+			log.Println("invalid length", n)
 		}
 	}
 }
@@ -125,11 +125,11 @@ func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, req
 			return
 		case r := <-reqChan:
 			switch len(r.body) {
-			case 32:
+			case needle.HashLength:
 				if err := handleHash(conn, r, storage); err != nil {
 					log.Println(err)
 				}
-			case 480:
+			case needle.NeedleLength:
 				if err := handleNeedle(conn, r, storage); err != nil {
 					log.Println(err)
 				}
@@ -139,7 +139,7 @@ func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, req
 }
 
 func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
-	var hash [32]byte
+	var hash [needle.HashLength]byte
 	copy(hash[:], r.body)
 	n, err := s.Get(hash)
 	if err != nil {

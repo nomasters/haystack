@@ -19,6 +19,6 @@ var (
 
 // Storage is a simple interface to interact with storage.
 type Storage interface {
-	Get(hash [32]byte) (*needle.Needle, error)
+	Get(hash needle.Hash) (*needle.Needle, error)
 	Set(needle *needle.Needle) error
 }
