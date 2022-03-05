@@ -104,10 +104,10 @@ func (n *Needle) validate() error {
 func validateLength(b []byte, expected int) error {
 	l := len(b)
 	if l < expected {
-		return fmt.Errorf("too few bytes, got: %v, expected: %v", l, expected)
+		return fmt.Errorf("too few bytes : %v, expected: %v", l, expected)
 	}
 	if l > expected {
-		return fmt.Errorf("too many bytes, got: %v, expected: %v", l, expected)
+		return fmt.Errorf("too many bytes : %v, expected: %v", l, expected)
 	}
 	return nil
 }
