@@ -1,13 +1,14 @@
 package main
 
 import (
-	"bufio"
 	"encoding/hex"
 	"fmt"
-	"net"
 	"runtime"
 	"sync"
 	"time"
+
+	"github.com/nomasters/haystack"
+	"github.com/nomasters/haystack/needle"
 )
 
 type task struct {
@@ -18,18 +19,13 @@ type task struct {
 }
 
 func main() {
-	addr, err := net.ResolveUDPAddr("udp", "127.0.0.1:1337")
+	client, err := haystack.NewClient("127.0.0.1:1337")
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
 
-	conn, err := net.DialUDP("udp", nil, addr)
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	defer conn.Close()
+	defer client.Close()
 
 	counter := 0
 
@@ -39,7 +35,7 @@ func main() {
 	taskChan := make(chan task)
 
 	for i := 0; i < runtime.NumCPU(); i++ {
-		go worker(taskChan, conn)
+		go worker(taskChan, client)
 	}
 
 	reqCount := 100000
@@ -69,18 +65,21 @@ func main() {
 	fmt.Println("count:", counter, float64(reqCount)/d.Seconds())
 }
 
-func worker(job chan task, conn *net.UDPConn) {
+func worker(job chan task, client *haystack.Client) {
 	for {
-		processJob(<-job, conn)
+		processJob(<-job, client)
 	}
 }
 
-func processJob(j task, conn *net.UDPConn) {
+func processJob(j task, client *haystack.Client) {
 	j.wg.Add(1)
 	defer j.wg.Done()
-	p := make([]byte, 480)
-	conn.Write(j.payload)
-	_, err := bufio.NewReader(conn).Read(p)
+	n, err := needle.FromBytes(j.payload)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	_, err = client.Set(n)
 	if err == nil {
 		j.mu.Lock()
 		*j.counter++

@@ -1,5 +1,50 @@
 package haystack
 
+import (
+	"bufio"
+	"net"
+
+	"github.com/nomasters/haystack/needle"
+)
+
+type options struct {
+}
+
+type option func(*options)
+
+// Client represents a haystack client with a UDP connection
+type Client struct {
+	conn *net.UDPConn
+}
+
+// Close implements the UDPConn.Close() method
+func (c *Client) Close() error {
+	return c.conn.Close()
+}
+
+func (c *Client) Set(n *needle.Needle) ([]byte, error) {
+	p := make([]byte, 480)
+	c.conn.Write(n.Bytes())
+	l, err := bufio.NewReader(c.conn).Read(p)
+	return p[:l], err
+}
+
+// NewClient creates a new haystack client. It requires an address
+// but can also take an arbitrary number of options
+func NewClient(address string, opts ...option) (*Client, error) {
+	c := new(Client)
+	addr, err := net.ResolveUDPAddr("udp", address)
+	if err != nil {
+		return c, err
+	}
+	conn, err := net.DialUDP("udp", nil, addr)
+	if err != nil {
+		return c, err
+	}
+	c.conn = conn
+	return c, nil
+}
+
 // TODO:
 // setup haystack client:
 // -- this should initialize a UDP config
