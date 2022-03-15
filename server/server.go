@@ -23,6 +23,10 @@ import (
 // in memory, redis, dynamodb, and ssddb
 // the interface should be simple, just a read and write aspect.
 
+// response: should be HMAC(k,m)|m
+// where k is the submitted hash
+// m is the ttl in seconds that the message will be on the server
+
 // Server is a struct that contains all the settings required for a haystack server
 type Server struct {
 	Address  string
