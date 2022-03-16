@@ -45,6 +45,11 @@ func NewClient(address string, opts ...option) (*Client, error) {
 	return c, nil
 }
 
+// todo:
+// - create hmac and verify functions
+// - create get function
+// - write tests
+
 // TODO:
 // setup haystack client:
 // -- this should initialize a UDP config
