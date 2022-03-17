@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/nomasters/haystack/needle"
-	"github.com/nomasters/haystack/storage"
 )
 
 const (
@@ -55,7 +54,7 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 	v, ok := s.internal[hash]
 	s.RUnlock()
 	if !ok {
-		return nil, storage.ErrorDNE
+		return nil, needle.ErrorDNE
 	}
 	return needle.New(v.payload)
 }

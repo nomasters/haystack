@@ -29,6 +29,19 @@ func (c *Client) Set(n *needle.Needle) ([]byte, error) {
 	return p[:l], err
 }
 
+func (c *Client) Get(h *needle.Hash) (*needle.Needle, error) {
+	p := make([]byte, 480)
+	c.conn.Write(h[:])
+	l, err := bufio.NewReader(c.conn).Read(p)
+	if err != nil {
+		return nil, err
+	}
+	if l != needle.NeedleLength {
+		return nil, needle.ErrorDNE
+	}
+	return needle.FromBytes(p)
+}
+
 // NewClient creates a new haystack client. It requires an address
 // but can also take an arbitrary number of options
 func NewClient(address string, opts ...option) (*Client, error) {

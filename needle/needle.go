@@ -2,6 +2,7 @@ package needle
 
 import (
 	"crypto/subtle"
+	"errors"
 	"fmt"
 	"math"
 
@@ -25,6 +26,11 @@ const (
 	NeedleLength = HashLength + PayloadLength
 	// EntropyThreshold is the minimum threshold of the payload's entropy allowed by the Needle validator
 	EntropyThreshold = 0.90
+)
+
+var (
+	// ErrorDNE is returned when a key/value par does not exist
+	ErrorDNE = errors.New("Does Not Exist")
 )
 
 // Needle is an immutable container for a [480]byte array that containers a 448 byte payload

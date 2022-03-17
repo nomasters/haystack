@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"errors"
 	"time"
 
 	"github.com/nomasters/haystack/needle"
@@ -10,11 +9,6 @@ import (
 const (
 	// DefaultTTL of 1 day
 	DefaultTTL = 24 * time.Hour
-)
-
-var (
-	// ErrorDNE is returned when a key/value par does not exist
-	ErrorDNE = errors.New("Does Not Exist")
 )
 
 // Storage is a simple interface to interact with storage.
