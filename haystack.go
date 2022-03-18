@@ -22,6 +22,7 @@ func (c *Client) Close() error {
 	return c.conn.Close()
 }
 
+// Set takes a needle and returns
 func (c *Client) Set(n *needle.Needle) ([]byte, error) {
 	p := make([]byte, 480)
 	c.conn.Write(n.Bytes())
@@ -29,6 +30,7 @@ func (c *Client) Set(n *needle.Needle) ([]byte, error) {
 	return p[:l], err
 }
 
+// Get takes a needle hash and returns a Needle
 func (c *Client) Get(h *needle.Hash) (*needle.Needle, error) {
 	p := make([]byte, 480)
 	c.conn.Write(h[:])
