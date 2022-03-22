@@ -10,6 +10,10 @@ Design goals:
 key - blake3(256) hash of the content
 value - bytes (should be )
 
+goals:
+- easy to use client
+- fast
+- simple
 
 ```
 key      | value
