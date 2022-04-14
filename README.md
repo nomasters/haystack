@@ -32,4 +32,4 @@ This is large enough for the value to contain something like:
 
 ideas for response data from server:
 
-ed25519 signed response with an hmac using the submitted key that includes the expiration time  
+ed25519 signed response with an hmac using the submitted key that includes the expiration time. This would be optional validation and how to get the pubkey would be configurable. Possibly using something like hashmap to hold the claim, or DNS, or some other service.
