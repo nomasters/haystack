@@ -7,7 +7,7 @@ Design goals:
 - ephemeral - key/value is short lived, no keys will live longer than a window (TBD) and this is defined by the server. Content can be resubmitted to reset the counter
 - submitted value should be indestingishable from random data. Values should desernable by the server. The server will do statistical analysis on the payloads qualify a minimum threshold. This analysis is also known to the client and the client should test before submitting.
 
-key - blake3(256) hash of the content
+key - blake2(256) hash of the content
 value - bytes (should be )
 
 goals:
@@ -28,3 +28,8 @@ This is large enough for the value to contain something like:
 |          | next key    | padded message |
 |----------|-------------|----------------|
 | 24 bytes | 32 bytes    | 392 bytes      |
+
+
+ideas for response data from server:
+
+ed25519 signed response with an hmac using the submitted key that includes the expiration time. This would be optional validation and how to get the pubkey would be configurable. Possibly using something like hashmap to hold the claim, or DNS, or some other service.
