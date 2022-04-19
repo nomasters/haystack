@@ -41,6 +41,11 @@ type request struct {
 	addr *net.UDPAddr
 }
 
+// Response is the response type for the server, it handles HMAC and other values
+type Response struct {
+	body []byte
+}
+
 // New returns a reference to a new Server struct
 func New() (*Server, error) {
 	memoryStore := memory.New()
