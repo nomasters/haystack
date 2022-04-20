@@ -46,6 +46,13 @@ type Response struct {
 	body []byte
 }
 
+// WIP: the idea here is something like:
+// p : payload is a uint64 encoded unix timestamp of expiration
+// k : the needle key from the submitted payload
+// s : the nacl sign signature
+// h : hmac
+// s(h|p)|h(k|len(p)|p)|p
+
 // New returns a reference to a new Server struct
 func New() (*Server, error) {
 	memoryStore := memory.New()
