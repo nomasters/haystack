@@ -13,7 +13,7 @@ import (
 type Hash [32]byte
 
 // Payload represents an array of length PayloadLength
-type Payload [448]byte
+type Payload [160]byte
 
 const (
 	// HashLength is the length in bytes of the hash prefix in any message
@@ -25,7 +25,7 @@ const (
 	// NeedleLength is the number of bytes required for a valid needle.
 	NeedleLength = HashLength + PayloadLength
 	// EntropyThreshold is the minimum threshold of the payload's entropy allowed by the Needle validator
-	EntropyThreshold = 0.90
+	EntropyThreshold = 0.85
 )
 
 var (
@@ -33,7 +33,7 @@ var (
 	ErrorDNE = errors.New("Does Not Exist")
 )
 
-// Needle is an immutable container for a [480]byte array that containers a 448 byte payload
+// Needle is an immutable container for a [192]byte array that containers a 160 byte payload
 // and a 32 byte blake2b hash of the payload.
 type Needle struct {
 	internal [NeedleLength]byte
@@ -56,7 +56,7 @@ func New(payload Payload) (*Needle, error) {
 // It takes a byte slice and expects it to be exactly the length of NeedleLength.
 // The byteslice should consist of the first 32 bytes being the blake2b hash of the
 // payload and the payload bytes. This function verifies the length of the byte slice,
-// copies the bytes into a private [480]byte array, and validates the Needle. It returns
+// copies the bytes into a private [192]byte array, and validates the Needle. It returns
 // a reference to a Needle and an error.
 func FromBytes(b []byte) (*Needle, error) {
 	var n Needle
@@ -79,7 +79,7 @@ func (n Needle) Payload() (p Payload) {
 	return p
 }
 
-// Bytes returns a byte slice of the entire 480 byte hash + payload
+// Bytes returns a byte slice of the entire 192 byte hash + payload
 func (n Needle) Bytes() []byte {
 	return n.internal[:]
 }
