@@ -52,6 +52,11 @@ type Response struct {
 // s : the nacl sign signature
 // h : hmac
 // s(h|p)|h(k|len(p)|p)|p
+// response.Validate(key, ...opts)
+// for example:
+// response.Validate(needle.Key(), WithHMAC(pubkey), WithSharedKey(sharedKey))
+// this will make it easy to to ensure that a the basic response is correct
+// while also allowing for additional features to be verified as well.
 
 // New returns a reference to a new Server struct
 func New() (*Server, error) {
