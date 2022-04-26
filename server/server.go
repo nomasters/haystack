@@ -41,23 +41,6 @@ type request struct {
 	addr *net.UDPAddr
 }
 
-// Response is the response type for the server, it handles HMAC and other values
-type Response struct {
-	body []byte
-}
-
-// WIP: the idea here is something like:
-// p : payload is a uint64 encoded unix timestamp of expiration
-// k : the needle key from the submitted payload
-// s : the nacl sign signature
-// h : hmac
-// s(h|p)|h(k|len(p)|p)|p
-// response.Validate(key, ...opts)
-// for example:
-// response.Validate(needle.Key(), WithHMAC(pubkey), WithSharedKey(sharedKey))
-// this will make it easy to to ensure that a the basic response is correct
-// while also allowing for additional features to be verified as well.
-
 // New returns a reference to a new Server struct
 func New() (*Server, error) {
 	memoryStore := memory.New()
