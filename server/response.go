@@ -6,16 +6,21 @@ import (
 	"time"
 
 	"github.com/nomasters/haystack/needle"
+	"golang.org/x/crypto/blake2b"
+	sign "golang.org/x/crypto/nacl/sign"
 )
 
 const (
-	ResponseLength = 64 + 32 + 8
+	sigLen         = sign.Overhead
+	hashLen        = blake2b.Size256
+	timeLen        = 8
+	ResponseLength = sigLen + hashLen + timeLen
 )
 
 // Response is the response type for the server, it handles HMAC and other values
 type Response struct {
 	sig  [64]byte
-	hmac [32]byte
+	hash [32]byte
 	exp  time.Time
 }
 
@@ -37,22 +42,55 @@ type Response struct {
 
 // }
 
-func NewResponse(exp time.Time, hash needle.Hash, presharedKey []byte, privateKey []byte) (Response, error) {
-	e := uint64(exp.Unix())
+// NewResponse takes a expiration, hashKey (needle.Hash), and optionally a preshared key and a privateKey.
+// if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
+// it signs the payload with the privateKey and the message which is the hash + exp concatenated.
+func NewResponse(exp time.Time, hashKey needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (Response, error) {
+	var sig [64]byte
+	var hash [32]byte
 
+	b := timeToBytes(exp)
+	h := mac(hashKey, b)
+
+	if presharedKey != nil {
+		h = hmac(presharedKey, h)
+	}
+	m := append(h, b...)
+	o := make([]byte, ResponseLength)
+	// only run nacl Sign if not nil, otherwise let sig be an array of zeros
+	if privateKey != nil {
+		s := sign.Sign(o, m, privateKey)
+		copy(sig[:], s)
+	}
+	copy(hash[:], h)
 	r := Response{
-		exp: exp,
+		sig:  sig,
+		hash: hash,
+		exp:  exp,
 	}
 	return r, nil
 }
 
+func mac(key needle.Hash, message []byte) []byte {
+	mac, _ := blake2b.New256(key[:])
+	return mac.Sum(message)
+}
+
+func hmac(key *[64]byte, message []byte) []byte {
+	mac, _ := blake2b.New256(key[32:])
+	hmac, _ := blake2b.New256(key[:32])
+	return hmac.Sum(mac.Sum(message))
+}
+
+// ResponseFromBytes takes a byte slice and returns a Response and error
 func ResponseFromBytes(b []byte) (r Response, err error) {
 	if len(b) != ResponseLength {
 		return r, errors.New("invalid response length")
 	}
 	copy(r.sig[:], b[:64])
-	copy(r.hmac[:], b[64:96])
+	copy(r.hash[:], b[64:96])
 	r.exp = bytesToTime(b[96:])
+	return r, nil
 }
 
 func timeToBytes(t time.Time) []byte {
