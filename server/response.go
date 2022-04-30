@@ -11,16 +11,21 @@ import (
 )
 
 const (
-	sigLen         = sign.Overhead
-	hashLen        = blake2b.Size256
-	timeLen        = 8
-	ResponseLength = sigLen + hashLen + timeLen
+	sigLen      = sign.Overhead
+	hashLen     = blake2b.Size256
+	timeLen     = 8
+	responseLen = sigLen + hashLen + timeLen
+)
+
+var (
+	// ErrInvalidResponseLen is used if the byte slice doesn't match the expected length
+	ErrInvalidResponseLen = errors.New("invalid response length")
 )
 
 // Response is the response type for the server, it handles HMAC and other values
 type Response struct {
-	sig  [64]byte
-	hash [32]byte
+	sig  [sigLen]byte
+	hash [hashLen]byte
 	exp  time.Time
 }
 
@@ -46,8 +51,8 @@ type Response struct {
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
 // it signs the payload with the privateKey and the message which is the hash + exp concatenated.
 func NewResponse(exp time.Time, hashKey needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (Response, error) {
-	var sig [64]byte
-	var hash [32]byte
+	var sig [sigLen]byte
+	var hash [hashLen]byte
 
 	b := timeToBytes(exp)
 	h := mac(hashKey, b)
@@ -56,7 +61,7 @@ func NewResponse(exp time.Time, hashKey needle.Hash, presharedKey *[64]byte, pri
 		h = hmac(presharedKey, h)
 	}
 	m := append(h, b...)
-	o := make([]byte, ResponseLength)
+	o := make([]byte, responseLen)
 	// only run nacl Sign if not nil, otherwise let sig be an array of zeros
 	if privateKey != nil {
 		s := sign.Sign(o, m, privateKey)
@@ -84,8 +89,8 @@ func hmac(key *[64]byte, message []byte) []byte {
 
 // ResponseFromBytes takes a byte slice and returns a Response and error
 func ResponseFromBytes(b []byte) (r Response, err error) {
-	if len(b) != ResponseLength {
-		return r, errors.New("invalid response length")
+	if len(b) != responseLen {
+		return r, ErrInvalidResponseLen
 	}
 	copy(r.sig[:], b[:64])
 	copy(r.hash[:], b[64:96])
@@ -94,14 +99,14 @@ func ResponseFromBytes(b []byte) (r Response, err error) {
 }
 
 func timeToBytes(t time.Time) []byte {
-	b := make([]byte, 8)
+	b := make([]byte, timeLen)
 	binary.LittleEndian.PutUint64(b, uint64(t.Unix()))
 	return b
 }
 
 func bytesToTime(b []byte) time.Time {
-	if len(b) != 8 {
-		b = make([]byte, 8)
+	if len(b) != timeLen {
+		b = make([]byte, timeLen)
 	}
 	t := int64(binary.LittleEndian.Uint64(b))
 	return time.Unix(t, 0)
