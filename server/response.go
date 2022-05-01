@@ -24,9 +24,9 @@ var (
 
 // Response is the response type for the server, it handles HMAC and other values
 type Response struct {
-	sig  [sigLen]byte
-	hash [hashLen]byte
-	exp  time.Time
+	sig       [sigLen]byte
+	hash      [hashLen]byte
+	timestamp [timeLen]byte
 }
 
 // WIP: the idea here is something like:
@@ -47,33 +47,58 @@ type Response struct {
 
 // }
 
-// NewResponse takes a expiration, hashKey (needle.Hash), and optionally a preshared key and a privateKey.
+// NewResponse takes a timestamp, hashKey (needle.Hash), and optionally a preshared key and a privateKey.
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
-// it signs the payload with the privateKey and the message which is the hash + exp concatenated.
-func NewResponse(exp time.Time, hashKey needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (Response, error) {
+// it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
+func NewResponse(timestamp time.Time, hashKey needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (Response, error) {
 	var sig [sigLen]byte
 	var hash [hashLen]byte
+	var ts [timeLen]byte
 
-	b := timeToBytes(exp)
-	h := mac(hashKey, b)
-
+	copy(ts[:], timeToBytes(timestamp))
+	h := mac(hashKey, ts[:])
 	if presharedKey != nil {
 		h = hmac(presharedKey, h)
 	}
-	m := append(h, b...)
+
+	m := make([]byte, hashLen+timeLen)
+	copy(m[:hashLen], h)
+	copy(m[hashLen:], ts[:])
+
 	o := make([]byte, responseLen)
 	// only run nacl Sign if not nil, otherwise let sig be an array of zeros
+	// TODO: think about this randomly generating data instead of using zeros
 	if privateKey != nil {
 		s := sign.Sign(o, m, privateKey)
 		copy(sig[:], s)
 	}
 	copy(hash[:], h)
 	r := Response{
-		sig:  sig,
-		hash: hash,
-		exp:  exp,
+		sig:       sig,
+		hash:      hash,
+		timestamp: ts,
 	}
 	return r, nil
+}
+
+// Bytes returns a byte slice of a Response as sig || hash || timestamp
+func (r Response) Bytes() []byte {
+	b := make([]byte, responseLen)
+	copy(b[:sigLen], r.sig[:])
+	copy(b[sigLen:sigLen+hashLen], r.hash[:])
+	copy(b[sigLen+hashLen:], r.timestamp[:])
+	return b
+}
+
+// Timestamp returns time.Time encoded timestamp
+func (r Response) Timestamp() time.Time {
+	return bytesToTime(r.timestamp[:])
+}
+
+// Validate takes a hash and optionally a pubkey and presharedKey to validate the Response message.
+// If no error is found, it returns nil.
+func (r Response) Validate(hashKey needle.Hash, publicKey *[32]byte, presharedKey *[64]byte) error {
+	return nil
 }
 
 func mac(key needle.Hash, message []byte) []byte {
@@ -94,7 +119,7 @@ func ResponseFromBytes(b []byte) (r Response, err error) {
 	}
 	copy(r.sig[:], b[:64])
 	copy(r.hash[:], b[64:96])
-	r.exp = bytesToTime(b[96:])
+	r.timestamp = bytesToTime(b[96:])
 	return r, nil
 }
 
