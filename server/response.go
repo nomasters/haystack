@@ -14,6 +14,8 @@ const (
 	sigLen      = sign.Overhead
 	hashLen     = blake2b.Size256
 	timeLen     = 8
+	prefixLen   = sigLen + hashLen
+	macLen      = hashLen + timeLen
 	responseLen = sigLen + hashLen + timeLen
 )
 
@@ -61,7 +63,7 @@ func NewResponse(timestamp time.Time, hashKey needle.Hash, presharedKey *[64]byt
 		h = hmac(presharedKey, h)
 	}
 
-	m := make([]byte, hashLen+timeLen)
+	m := make([]byte, macLen)
 	copy(m[:hashLen], h)
 	copy(m[hashLen:], ts[:])
 
@@ -85,8 +87,8 @@ func NewResponse(timestamp time.Time, hashKey needle.Hash, presharedKey *[64]byt
 func (r Response) Bytes() []byte {
 	b := make([]byte, responseLen)
 	copy(b[:sigLen], r.sig[:])
-	copy(b[sigLen:sigLen+hashLen], r.hash[:])
-	copy(b[sigLen+hashLen:], r.timestamp[:])
+	copy(b[sigLen:prefixLen], r.hash[:])
+	copy(b[prefixLen:], r.timestamp[:])
 	return b
 }
 
@@ -117,9 +119,9 @@ func ResponseFromBytes(b []byte) (r Response, err error) {
 	if len(b) != responseLen {
 		return r, ErrInvalidResponseLen
 	}
-	copy(r.sig[:], b[:64])
-	copy(r.hash[:], b[64:96])
-	r.timestamp = bytesToTime(b[96:])
+	copy(r.sig[:], b[:sigLen])
+	copy(r.hash[:], b[sigLen:prefixLen])
+	copy(r.timestamp[:], b[prefixLen:])
 	return r, nil
 }
 
