@@ -1,0 +1,16 @@
+version: 2.1
+jobs:
+  test:
+    docker:
+      - image: cimg/go:1.18
+    steps:
+      - checkout
+      - run: go test -v ./...
+      - run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - run: bash <(curl -s https://codecov.io/bash)
+workflows:
+  version: 2
+  build:
+    jobs:
+      - test:
+          context: org-global
