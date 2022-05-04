@@ -3,6 +3,7 @@ package server
 import (
 	"encoding/binary"
 	"errors"
+	"math/rand"
 	"time"
 
 	"github.com/nomasters/haystack/needle"
@@ -17,6 +18,7 @@ const (
 	prefixLen   = sigLen + hashLen
 	macLen      = hashLen + timeLen
 	responseLen = sigLen + hashLen + timeLen
+	timeOffset  = responseLen - timeLen
 )
 
 var (
@@ -26,9 +28,7 @@ var (
 
 // Response is the response type for the server, it handles HMAC and other values
 type Response struct {
-	sig       [sigLen]byte
-	hash      [hashLen]byte
-	timestamp [timeLen]byte
+	internal [responseLen]byte
 }
 
 // WIP: the idea here is something like:
@@ -52,49 +52,36 @@ type Response struct {
 // NewResponse takes a timestamp, hashKey (needle.Hash), and optionally a preshared key and a privateKey.
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
 // it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
-func NewResponse(timestamp time.Time, hashKey needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (Response, error) {
-	var sig [sigLen]byte
-	var hash [hashLen]byte
-	var ts [timeLen]byte
-
-	copy(ts[:], timeToBytes(timestamp))
-	h := mac(hashKey, ts[:])
+func NewResponse(timestamp time.Time, hashKey needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (r Response) {
+	ts := timeToBytes(timestamp)
+	h := mac(hashKey, ts)
 	if presharedKey != nil {
 		h = hmac(presharedKey, h)
 	}
-
 	m := make([]byte, macLen)
 	copy(m[:hashLen], h)
-	copy(m[hashLen:], ts[:])
-
+	copy(m[hashLen:], ts)
 	o := make([]byte, responseLen)
-	// only run nacl Sign if not nil, otherwise let sig be an array of zeros
-	// TODO: think about this randomly generating data instead of using zeros
-	if privateKey != nil {
-		s := sign.Sign(o, m, privateKey)
-		copy(sig[:], s)
+	// create a random key if no privateKey is passed in
+	// this way signed and unsigned messages look the same
+	if privateKey == nil {
+		var pk [64]byte
+		rand.Read(pk[:])
+		privateKey = &pk
 	}
-	copy(hash[:], h)
-	r := Response{
-		sig:       sig,
-		hash:      hash,
-		timestamp: ts,
-	}
-	return r, nil
+	sign.Sign(o, m, privateKey)
+	copy(r.internal[:], o)
+	return r
 }
 
-// Bytes returns a byte slice of a Response as sig || hash || timestamp
+// Bytes returns a byte slice of a Response
 func (r Response) Bytes() []byte {
-	b := make([]byte, responseLen)
-	copy(b[:sigLen], r.sig[:])
-	copy(b[sigLen:prefixLen], r.hash[:])
-	copy(b[prefixLen:], r.timestamp[:])
-	return b
+	return r.internal[:]
 }
 
 // Timestamp returns time.Time encoded timestamp
 func (r Response) Timestamp() time.Time {
-	return bytesToTime(r.timestamp[:])
+	return bytesToTime(r.internal[timeOffset:])
 }
 
 // Validate takes a hash and optionally a pubkey and presharedKey to validate the Response message.
@@ -119,9 +106,7 @@ func ResponseFromBytes(b []byte) (r Response, err error) {
 	if len(b) != responseLen {
 		return r, ErrInvalidResponseLen
 	}
-	copy(r.sig[:], b[:sigLen])
-	copy(r.hash[:], b[sigLen:prefixLen])
-	copy(r.timestamp[:], b[prefixLen:])
+	copy(r.internal[:], b)
 	return r, nil
 }
 
