@@ -1,8 +1,10 @@
 package server
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -16,7 +18,7 @@ const (
 	hashLen     = blake2b.Size256
 	timeLen     = 8
 	prefixLen   = sigLen + hashLen
-	macLen      = hashLen + timeLen
+	messageLen  = hashLen + timeLen
 	responseLen = sigLen + hashLen + timeLen
 	timeOffset  = responseLen - timeLen
 )
@@ -24,6 +26,10 @@ const (
 var (
 	// ErrInvalidResponseLen is used if the byte slice doesn't match the expected length
 	ErrInvalidResponseLen = errors.New("invalid response length")
+	// ErrInvalidMAC is an error when the response hash doesn't match the derived hash
+	ErrInvalidMAC = errors.New("(h)mac failed validation")
+	// ErrInvalidSig is an error used when the signature fails validation.
+	ErrInvalidSig = errors.New("signature failed validation")
 )
 
 // Response is the response type for the server, it handles HMAC and other values
@@ -58,12 +64,10 @@ func NewResponse(timestamp time.Time, hashKey needle.Hash, presharedKey *[64]byt
 	if presharedKey != nil {
 		h = hmac(presharedKey, h)
 	}
-	m := make([]byte, macLen)
+	m := make([]byte, messageLen)
 	copy(m[:hashLen], h)
 	copy(m[hashLen:], ts)
 	o := make([]byte, responseLen)
-	// create a random key if no privateKey is passed in
-	// this way signed and unsigned messages look the same
 	if privateKey == nil {
 		var pk [64]byte
 		rand.Read(pk[:])
@@ -87,6 +91,20 @@ func (r Response) Timestamp() time.Time {
 // Validate takes a hash and optionally a pubkey and presharedKey to validate the Response message.
 // If no error is found, it returns nil.
 func (r Response) Validate(hashKey needle.Hash, publicKey *[32]byte, presharedKey *[64]byte) error {
+	h := mac(hashKey, r.internal[timeOffset:])
+	if presharedKey != nil {
+		h = hmac(presharedKey, h)
+	}
+	m := make([]byte, messageLen)
+	copy(m[:hashLen], h)
+	copy(m[hashLen:], r.internal[timeOffset:])
+	if !bytes.Equal(r.internal[sigLen:], m) {
+		fmt.Printf("%x\n%x\n", r.internal[sigLen:], m)
+		return ErrInvalidMAC
+	}
+	if _, validSig := sign.Open(nil, r.internal[:], publicKey); !validSig {
+		return ErrInvalidSig
+	}
 	return nil
 }
 
