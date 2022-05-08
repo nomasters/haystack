@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -67,14 +66,12 @@ func NewResponse(timestamp time.Time, hashKey needle.Hash, presharedKey *[64]byt
 	m := make([]byte, messageLen)
 	copy(m[:hashLen], h)
 	copy(m[hashLen:], ts)
-	o := make([]byte, responseLen)
 	if privateKey == nil {
 		var pk [64]byte
 		rand.Read(pk[:])
 		privateKey = &pk
 	}
-	sign.Sign(o, m, privateKey)
-	copy(r.internal[:], o)
+	copy(r.internal[:], sign.Sign(nil, m, privateKey))
 	return r
 }
 
@@ -99,7 +96,7 @@ func (r Response) Validate(hashKey needle.Hash, publicKey *[32]byte, presharedKe
 	copy(m[:hashLen], h)
 	copy(m[hashLen:], r.internal[timeOffset:])
 	if !bytes.Equal(r.internal[sigLen:], m) {
-		fmt.Printf("%x\n%x\n", r.internal[sigLen:], m)
+		// fmt.Printf("%x\n%x\n", r.internal[sigLen:], m)
 		return ErrInvalidMAC
 	}
 	if _, validSig := sign.Open(nil, r.internal[:], publicKey); !validSig {
