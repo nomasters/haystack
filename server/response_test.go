@@ -57,11 +57,22 @@ func TestResponse(t *testing.T) {
 		var preshared [64]byte
 		rand.Read(preshared[:])
 
-		r := NewResponse(time.Now(), h, &preshared, &priv)
-		t.Logf("hash:     %x\n", h)
-		t.Logf("response: %x\n", r.Bytes())
-		if err := r.Validate(h, &pubkey, &preshared); err != nil {
-			t.Error(err)
+		testTable := []struct {
+			resp      Response
+			hash      needle.Hash
+			pubkey    *[32]byte
+			preshared *[64]byte
+			err       error
+		}{
+			{NewResponse(time.Now(), h, &preshared, &priv), h, &pubkey, &preshared, nil},
+			{NewResponse(time.Now(), h, nil, &priv), h, &pubkey, nil, nil},
+			{NewResponse(time.Now(), h, nil, nil), h, nil, nil, nil},
+		}
+
+		for _, test := range testTable {
+			if err := test.resp.Validate(test.hash, test.pubkey, test.preshared); err != test.err {
+				t.Error(err)
+			}
 		}
 	})
 }
@@ -79,7 +90,7 @@ func BenchmarkNewResponse(b *testing.B) {
 	rand.Read(preshared[:])
 
 	for n := 0; n < b.N; n++ {
-		NewResponse(time.Now(), h, nil, &priv)
+		NewResponse(time.Now(), h, &preshared, &priv)
 	}
 }
 

@@ -36,30 +36,12 @@ type Response struct {
 	internal [responseLen]byte
 }
 
-// WIP: the idea here is something like:
-// p : payload is a uint64 encoded unix timestamp of expiration
-// k : the needle key from the submitted payload
-// s : the nacl sign signature
-// h : hmac
-// s(h|p)|h(k|len(p)|p)|p
-// response.Validate(key, ...opts)
-// for example:
-// response.Validate(needle.Key(), WithHMAC(pubkey), WithSharedKey(sharedKey))
-// this will make it easy to to ensure that a the basic response is correct
-// while also allowing for additional features to be verified as well.
-
-// s[64]h[32]p[8]
-
-// func (r Response) Validate(hash needle.Hash, preshared []byte, pubkey []byte) {
-
-// }
-
-// NewResponse takes a timestamp, hashKey (needle.Hash), and optionally a preshared key and a privateKey.
+// NewResponse takes a timestamp, needleHash (needle.Hash), and optionally a preshared key and a privateKey.
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
 // it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
-func NewResponse(timestamp time.Time, hashKey needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (r Response) {
+func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (r Response) {
 	ts := timeToBytes(timestamp)
-	h := mac(hashKey, ts)
+	h := mac(needleHash, ts)
 	if presharedKey != nil {
 		h = hmac(presharedKey, h)
 	}
@@ -87,8 +69,8 @@ func (r Response) Timestamp() time.Time {
 
 // Validate takes a hash and optionally a pubkey and presharedKey to validate the Response message.
 // If no error is found, it returns nil.
-func (r Response) Validate(hashKey needle.Hash, publicKey *[32]byte, presharedKey *[64]byte) error {
-	h := mac(hashKey, r.internal[timeOffset:])
+func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, presharedKey *[64]byte) error {
+	h := mac(needleHash, r.internal[timeOffset:])
 	if presharedKey != nil {
 		h = hmac(presharedKey, h)
 	}
@@ -96,11 +78,12 @@ func (r Response) Validate(hashKey needle.Hash, publicKey *[32]byte, presharedKe
 	copy(m[:hashLen], h)
 	copy(m[hashLen:], r.internal[timeOffset:])
 	if !bytes.Equal(r.internal[sigLen:], m) {
-		// fmt.Printf("%x\n%x\n", r.internal[sigLen:], m)
 		return ErrInvalidMAC
 	}
-	if _, validSig := sign.Open(nil, r.internal[:], publicKey); !validSig {
-		return ErrInvalidSig
+	if publicKey != nil {
+		if _, validSig := sign.Open(nil, r.internal[:], publicKey); !validSig {
+			return ErrInvalidSig
+		}
 	}
 	return nil
 }
