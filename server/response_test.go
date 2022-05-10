@@ -75,6 +75,23 @@ func TestResponse(t *testing.T) {
 			}
 		}
 	})
+	t.Run("Bytes", func(t *testing.T) {
+		t.Parallel()
+		b, _ := hex.DecodeString("0f56efcf30e923137d76665ad97882799266c1b3a487b141a97311a9ebb8750b5617f1a6d44da7064d7b8f860e17d3932fb65506dc9131efcdb5b986d934810592e3796200000000c09ff936ffbe99af795d994b5843149beadc20b0608cce6392e3796200000000")
+		r, _ := ResponseFromBytes(b)
+		if !bytes.Equal(b, r.Bytes()) {
+			t.Errorf("expected:\t%x\nresult:\t%x\n", b, r.Bytes())
+		}
+	})
+	t.Run("Timestamp", func(t *testing.T) {
+		t.Parallel()
+		b, _ := hex.DecodeString("0f56efcf30e923137d76665ad97882799266c1b3a487b141a97311a9ebb8750b5617f1a6d44da7064d7b8f860e17d3932fb65506dc9131efcdb5b986d934810592e3796200000000c09ff936ffbe99af795d994b5843149beadc20b0608cce6392e3796200000000")
+		r, _ := ResponseFromBytes(b)
+		expected := time.Unix(1652155282, 0)
+		if !r.Timestamp().Equal(expected) {
+			t.Errorf("expected:\t%v\nresult:\t%v\n", expected, r.Timestamp())
+		}
+	})
 }
 
 func BenchmarkNewResponse(b *testing.B) {
