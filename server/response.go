@@ -77,6 +77,7 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 	m := make([]byte, messageLen)
 	copy(m[:hashLen], h)
 	copy(m[hashLen:], r.internal[timeOffset:])
+
 	if !bytes.Equal(r.internal[sigLen:], m) {
 		return ErrInvalidMAC
 	}
@@ -90,13 +91,16 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 
 func mac(key needle.Hash, message []byte) []byte {
 	mac, _ := blake2b.New256(key[:])
-	return mac.Sum(message)
+	mac.Write(message)
+	return mac.Sum(nil)
 }
 
-func hmac(key *[64]byte, message []byte) []byte {
+func hmac(key *[64]byte, message []byte) (b []byte) {
 	mac, _ := blake2b.New256(key[32:])
 	hmac, _ := blake2b.New256(key[:32])
-	return hmac.Sum(mac.Sum(message))
+	mac.Write(message)
+	hmac.Write(mac.Sum(nil))
+	return hmac.Sum(nil)
 }
 
 // ResponseFromBytes takes a byte slice and returns a Response and error
