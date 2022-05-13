@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"encoding/hex"
+	"errors"
 	"testing"
 	"time"
 
@@ -51,8 +52,12 @@ func TestResponse(t *testing.T) {
 		pk, sk, _ := ed25519.GenerateKey(nil)
 		var priv [64]byte
 		var pubkey [32]byte
+
 		copy(priv[:], sk)
 		copy(pubkey[:], pk)
+
+		var badPubkey [32]byte
+		var badPreshared [64]byte
 
 		var preshared [64]byte
 		rand.Read(preshared[:])
@@ -67,11 +72,13 @@ func TestResponse(t *testing.T) {
 			{NewResponse(time.Now(), h, &preshared, &priv), h, &pubkey, &preshared, nil},
 			{NewResponse(time.Now(), h, nil, &priv), h, &pubkey, nil, nil},
 			{NewResponse(time.Now(), h, nil, nil), h, nil, nil, nil},
+			{NewResponse(time.Now(), h, &preshared, nil), h, nil, &badPreshared, ErrInvalidMAC},
+			{NewResponse(time.Now(), h, nil, &priv), h, &badPubkey, nil, ErrInvalidSig},
 		}
 
 		for _, test := range testTable {
-			if err := test.resp.Validate(test.hash, test.pubkey, test.preshared); err != test.err {
-				t.Error(err)
+			if err := test.resp.Validate(test.hash, test.pubkey, test.preshared); err != test.err || !errors.Is(err, test.err) {
+				t.Errorf("expected: %v, found: %v", test.err, err)
 			}
 		}
 	})
