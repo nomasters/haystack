@@ -41,6 +41,36 @@ func TestBytesToTime(t *testing.T) {
 	}
 }
 
+func TestResponseFromBytes(t *testing.T) {
+	t.Parallel()
+
+	valid, _ := hex.DecodeString("0f56efcf30e923137d76665ad97882799266c1b3a487b141a97311a9ebb8750b5617f1a6d44da7064d7b8f860e17d3932fb65506dc9131efcdb5b986d934810592e3796200000000c09ff936ffbe99af795d994b5843149beadc20b0608cce6392e3796200000000")
+	invalidShort, _ := hex.DecodeString("0f56efcf30e923137d76665ad97882799266c1b3a487b141a97311a9ebb8750b5617f1a6d44da7064d7b8f860e17d3932fb65506dc9131efcdb5b986d934810592e3796200000000c09ff936ffbe99af795d994b5843149beadc20b0608cce6392e37962000000")
+	invalidLong, _ := hex.DecodeString("0f56efcf30e923137d76665ad97882799266c1b3a487b141a97311a9ebb8750b5617f1a6d44da7064d7b8f860e17d3932fb65506dc9131efcdb5b986d934810592e3796200000000c09ff936ffbe99af795d994b5843149beadc20b0608cce6392e379620000000000")
+
+	testTable := []struct {
+		input []byte
+		err   error
+	}{
+		{valid, nil},
+		{invalidShort, ErrInvalidResponseLen},
+		{invalidLong, ErrInvalidResponseLen},
+	}
+
+	for _, test := range testTable {
+		r, err := ResponseFromBytes(test.input)
+		if test.err != nil {
+			if err != test.err {
+				t.Errorf("expected: %v, found: %v", test.err, err)
+			}
+		} else {
+			if !bytes.Equal(test.input, r.Bytes()) {
+				t.Errorf("expected:\t%x\nresult:\t%x\n", test.input, r.Bytes())
+			}
+		}
+	}
+}
+
 func TestResponse(t *testing.T) {
 	t.Parallel()
 	t.Run("Validate", func(t *testing.T) {
@@ -77,8 +107,10 @@ func TestResponse(t *testing.T) {
 		}
 
 		for _, test := range testTable {
-			if err := test.resp.Validate(test.hash, test.pubkey, test.preshared); err != test.err || !errors.Is(err, test.err) {
-				t.Errorf("expected: %v, found: %v", test.err, err)
+			if err := test.resp.Validate(test.hash, test.pubkey, test.preshared); err != test.err {
+				if !errors.Is(err, test.err) {
+					t.Errorf("expected: %v, found: %v", test.err, err)
+				}
 			}
 		}
 	})
