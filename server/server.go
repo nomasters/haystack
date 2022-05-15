@@ -14,19 +14,6 @@ import (
 	"github.com/nomasters/haystack/storage/memory"
 )
 
-// TODO investigate multicast
-
-// this will be the primary processor for haystack server
-// the idea here is to handle the two submit types
-// but also sort out storage engines
-// I think the primary ones should be:
-// in memory, redis, dynamodb, and ssddb
-// the interface should be simple, just a read and write aspect.
-
-// response: should be HMAC(k,m)|m
-// where k is the submitted hash
-// m is the ttl in seconds that the message will be on the server
-
 // Server is a struct that contains all the settings required for a haystack server
 type Server struct {
 	Address  string
@@ -161,6 +148,9 @@ func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
 	if err := s.Set(n); err != nil {
 		return err
 	}
-	_, err = conn.WriteToUDP([]byte("success"), r.addr)
+
+	resp := NewResponse(time.Now(), n.Hash(), nil, nil)
+
+	_, err = conn.WriteToUDP(resp.Bytes(), r.addr)
 	return err
 }
