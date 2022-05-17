@@ -13,13 +13,14 @@ import (
 )
 
 const (
-	sigLen      = sign.Overhead
-	hashLen     = blake2b.Size256
-	timeLen     = 8
-	prefixLen   = sigLen + hashLen
-	messageLen  = hashLen + timeLen
-	responseLen = sigLen + hashLen + timeLen
-	timeOffset  = responseLen - timeLen
+	sigLen     = sign.Overhead
+	hashLen    = blake2b.Size256
+	timeLen    = 8
+	prefixLen  = sigLen + hashLen
+	messageLen = hashLen + timeLen
+	// ResponseLength is sigLen + hashLen + timeLen
+	ResponseLength = sigLen + hashLen + timeLen
+	timeOffset     = ResponseLength - timeLen
 )
 
 var (
@@ -33,7 +34,7 @@ var (
 
 // Response is the response type for the server, it handles HMAC and other values
 type Response struct {
-	internal [responseLen]byte
+	internal [ResponseLength]byte
 }
 
 // NewResponse takes a timestamp, needleHash (needle.Hash), and optionally a preshared key and a privateKey.
@@ -105,7 +106,7 @@ func hmac(key *[64]byte, message []byte) (b []byte) {
 
 // ResponseFromBytes takes a byte slice and returns a Response and error
 func ResponseFromBytes(b []byte) (r Response, err error) {
-	if len(b) != responseLen {
+	if len(b) != ResponseLength {
 		return r, ErrInvalidResponseLen
 	}
 	copy(r.internal[:], b)
