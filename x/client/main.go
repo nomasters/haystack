@@ -9,7 +9,6 @@ import (
 
 	"github.com/nomasters/haystack"
 	"github.com/nomasters/haystack/needle"
-	"github.com/nomasters/haystack/server"
 )
 
 type task struct {
@@ -80,7 +79,7 @@ func processJob(j task, client *haystack.Client) {
 		fmt.Println(err)
 		return
 	}
-	r, err := client.Set(n)
+	err = client.Set(n)
 	if err == nil {
 		j.mu.Lock()
 		*j.counter++
@@ -88,9 +87,5 @@ func processJob(j task, client *haystack.Client) {
 	} else {
 		fmt.Printf("Some error %v\n", err)
 	}
-	resp, err := server.ResponseFromBytes(r)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(resp.Timestamp())
+
 }

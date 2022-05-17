@@ -2,9 +2,16 @@ package haystack
 
 import (
 	"bufio"
+	"errors"
 	"net"
+	"time"
 
 	"github.com/nomasters/haystack/needle"
+	"github.com/nomasters/haystack/server"
+)
+
+var (
+	ErrTimestampExceedsThreshold = errors.New("Timestamp exceeds threshold")
 )
 
 type options struct {
@@ -14,7 +21,10 @@ type option func(*options)
 
 // Client represents a haystack client with a UDP connection
 type Client struct {
-	conn *net.UDPConn
+	conn      *net.UDPConn
+	pubkey    *[32]byte
+	preshared *[64]byte
+	threshold time.Duration
 }
 
 // Close implements the UDPConn.Close() method
@@ -23,16 +33,38 @@ func (c *Client) Close() error {
 }
 
 // Set takes a needle and returns
-func (c *Client) Set(n *needle.Needle) ([]byte, error) {
-	p := make([]byte, 480)
-	c.conn.Write(n.Bytes())
+func (c *Client) Set(n *needle.Needle) error {
+	p := make([]byte, server.ResponseLength)
+	if _, err := c.conn.Write(n.Bytes()); err != nil {
+		return err
+	}
+
 	l, err := bufio.NewReader(c.conn).Read(p)
-	return p[:l], err
+	if err != nil {
+		return err
+	}
+	r, err := server.ResponseFromBytes(p[:l])
+
+	if !validTimestamp(time.Now(), r.Timestamp(), c.threshold) {
+		return ErrTimestampExceedsThreshold
+	}
+
+	return r.Validate(n.Hash(), c.pubkey, c.preshared)
+}
+
+// validTimestamp takes the current time, response claimed time, and acceptable threshold for time drift
+// and returns a boolean. Drift is calculated in absolute terms.
+func validTimestamp(now, claim time.Time, threshold time.Duration) bool {
+	drift := now.Sub(claim)
+	if drift < 0 {
+		drift = -drift
+	}
+	return drift < threshold
 }
 
 // Get takes a needle hash and returns a Needle
 func (c *Client) Get(h *needle.Hash) (*needle.Needle, error) {
-	p := make([]byte, 480)
+	p := make([]byte, needle.NeedleLength)
 	c.conn.Write(h[:])
 	l, err := bufio.NewReader(c.conn).Read(p)
 	if err != nil {
