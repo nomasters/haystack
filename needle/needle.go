@@ -30,7 +30,8 @@ const (
 
 var (
 	// ErrorDNE is returned when a key/value par does not exist
-	ErrorDNE = errors.New("Does Not Exist")
+	ErrorDNE         = errors.New("Does Not Exist")
+	ErrorInvalidHash = errors.New("invalid blake2b-256 hash")
 )
 
 // Needle is an immutable container for a [192]byte array that containers a 160 byte payload
@@ -97,7 +98,7 @@ func (n *Needle) validate() error {
 	p := n.Payload()
 	h := n.Hash()
 	if hash := blake2b.Sum256(p[:]); subtle.ConstantTimeCompare(h[:], hash[:]) == 0 {
-		return fmt.Errorf("invalid blake2b-256 hash")
+		return ErrorInvalidHash
 	}
 	if score := n.Entropy(); score < EntropyThreshold {
 		return fmt.Errorf("entropy score: %v, expected score > %v", score, EntropyThreshold)
