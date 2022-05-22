@@ -66,12 +66,8 @@ func validTimestamp(now, claim time.Time, threshold time.Duration) bool {
 func (c *Client) Get(h *needle.Hash) (*needle.Needle, error) {
 	p := make([]byte, needle.NeedleLength)
 	c.conn.Write(h[:])
-	l, err := bufio.NewReader(c.conn).Read(p)
-	if err != nil {
+	if _, err := bufio.NewReader(c.conn).Read(p); err != nil {
 		return nil, err
-	}
-	if l != needle.NeedleLength {
-		return nil, needle.ErrorDNE
 	}
 	return needle.FromBytes(p)
 }
