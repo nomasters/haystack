@@ -3,7 +3,6 @@ package server
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"math/rand"
 	"time"
 
@@ -21,16 +20,18 @@ const (
 	// ResponseLength is sigLen + hashLen + timeLen
 	ResponseLength = sigLen + hashLen + timeLen
 	timeOffset     = ResponseLength - timeLen
+
+	// ErrInvalidResponseLen is used if the byte slice doesn't match the expected length
+	ErrInvalidResponseLen = errorString("invalid response length")
+	// ErrInvalidMAC is an error when the response hash doesn't match the derived hash
+	ErrInvalidMAC = errorString("(h)mac failed validation")
+	// ErrInvalidSig is an error used when the signature fails validation.
+	ErrInvalidSig = errorString("signature failed validation")
 )
 
-var (
-	// ErrInvalidResponseLen is used if the byte slice doesn't match the expected length
-	ErrInvalidResponseLen = errors.New("invalid response length")
-	// ErrInvalidMAC is an error when the response hash doesn't match the derived hash
-	ErrInvalidMAC = errors.New("(h)mac failed validation")
-	// ErrInvalidSig is an error used when the signature fails validation.
-	ErrInvalidSig = errors.New("signature failed validation")
-)
+type errorString string
+
+func (e errorString) Error() string { return string(e) }
 
 // Response is the response type for the server, it handles HMAC and other values
 type Response struct {

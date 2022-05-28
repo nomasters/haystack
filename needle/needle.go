@@ -2,7 +2,6 @@ package needle
 
 import (
 	"crypto/subtle"
-	"errors"
 	"fmt"
 	"math"
 
@@ -20,19 +19,21 @@ const (
 	HashLength = len(Hash{})
 	// PayloadLength is the length of the remaining bytes of the message.
 	PayloadLength = len(Payload{})
-	// payloadLengthFloat is a preconverted length of type float64 for the entropy calculation
+	// payloadLengthFloat is a pre-converted length of type float64 for the entropy calculation
 	payloadLengthFloat = float64(PayloadLength)
 	// NeedleLength is the number of bytes required for a valid needle.
 	NeedleLength = HashLength + PayloadLength
 	// EntropyThreshold is the minimum threshold of the payload's entropy allowed by the Needle validator
 	EntropyThreshold = 0.85
+	// ErrorDNE is returned when a key/value par does not exist
+	ErrorDNE = errorString("Does Not Exist")
+	// ErrorInvalidHash is an error for in invalid hash
+	ErrorInvalidHash = errorString("invalid blake2b-256 hash")
 )
 
-var (
-	// ErrorDNE is returned when a key/value par does not exist
-	ErrorDNE         = errors.New("Does Not Exist")
-	ErrorInvalidHash = errors.New("invalid blake2b-256 hash")
-)
+type errorString string
+
+func (e errorString) Error() string { return string(e) }
 
 // Needle is an immutable container for a [192]byte array that containers a 160 byte payload
 // and a 32 byte blake2b hash of the payload.
@@ -55,7 +56,7 @@ func New(payload Payload) (*Needle, error) {
 
 // FromBytes is intended convert raw bytes (from UDP or storage) into a Needle.
 // It takes a byte slice and expects it to be exactly the length of NeedleLength.
-// The byteslice should consist of the first 32 bytes being the blake2b hash of the
+// The byte slice should consist of the first 32 bytes being the blake2b hash of the
 // payload and the payload bytes. This function verifies the length of the byte slice,
 // copies the bytes into a private [192]byte array, and validates the Needle. It returns
 // a reference to a Needle and an error.

@@ -2,7 +2,6 @@ package haystack
 
 import (
 	"bufio"
-	"errors"
 	"net"
 	"time"
 
@@ -10,9 +9,14 @@ import (
 	"github.com/nomasters/haystack/server"
 )
 
-var (
-	ErrTimestampExceedsThreshold = errors.New("Timestamp exceeds threshold")
+const (
+	// ErrTimestampExceedsThreshold is an error returned with the timestamp exceeds the acceptable threshold
+	ErrTimestampExceedsThreshold = errorString("Timestamp exceeds threshold")
 )
+
+type errorString string
+
+func (e errorString) Error() string { return string(e) }
 
 type options struct {
 }
