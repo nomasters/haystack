@@ -1,20 +1,15 @@
 package memory
 
 import (
-	"errors"
 	"sync"
 	"time"
 
 	"github.com/nomasters/haystack/needle"
+	"github.com/nomasters/haystack/storage"
 )
 
 const (
 	headroom = 2
-)
-
-var (
-	// ErrorNeedleIsNill is used when the Set method receives a nil pointer
-	ErrorNeedleIsNill = errors.New("Needle pointer is nil")
 )
 
 type value struct {
@@ -39,7 +34,7 @@ type Store struct {
 // Set takes a needle and writes it to the memory store.
 func (s *Store) Set(n *needle.Needle) error {
 	if n == nil {
-		return ErrorNeedleIsNill
+		return storage.ErrorNeedleIsNil
 	}
 	hash := n.Hash()
 	payload := n.Payload()
