@@ -70,13 +70,15 @@ func FromBytes(b []byte) (*Needle, error) {
 }
 
 // Hash returns a copy of the bytes of the blake2b 256 hash of the Needle payload.
-func (n Needle) Hash() (h Hash) {
+func (n Needle) Hash() Hash {
+	var h Hash
 	copy(h[:], n.internal[:HashLength])
 	return h
 }
 
 // Payload returns a byte slice of the Needle payload
-func (n Needle) Payload() (p Payload) {
+func (n Needle) Payload() Payload {
+	var p Payload
 	copy(p[:], n.internal[HashLength:])
 	return p
 }
@@ -123,8 +125,8 @@ func validateLength(b []byte, expected int) error {
 func entropy(p Payload) float64 {
 	var entropy float64
 	var freqArray [256]float64
-	for _, v := range p {
-		freqArray[v]++
+	for i := 0; i < PayloadLength; i++ {
+		freqArray[p[i]]++
 	}
 	for i := 0; i < 256; i++ {
 		if freqArray[i] != 0 {
