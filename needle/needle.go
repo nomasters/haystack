@@ -88,9 +88,7 @@ func (n Needle) Bytes() []byte {
 
 // Entropy is the Shannon Entropy score for the message payload.
 func (n Needle) Entropy() float64 {
-	var p Payload
-	copy(p[:], n.internal[HashLength:])
-	return entropy(&p)
+	return entropy(n.Payload())
 }
 
 // validate checks that a Needle has a valid hash and that it meets the entropy
@@ -122,15 +120,17 @@ func validateLength(b []byte, expected int) error {
 
 // entropy runs Shannon's entropy algorithm
 // and returns a float64 score between 0 and 1
-func entropy(p *Payload) float64 {
+func entropy(p Payload) float64 {
 	var entropy float64
-	freqMap := make(map[byte]float64)
+	var freqArray [256]float64
 	for _, v := range p {
-		freqMap[v]++
+		freqArray[v]++
 	}
-	for _, v := range freqMap {
-		freq := v / payloadLengthFloat
-		entropy += freq * math.Log2(freq)
+	for i := 0; i < 256; i++ {
+		if freqArray[i] != 0 {
+			freq := freqArray[i] / payloadLengthFloat
+			entropy += freq * math.Log2(freq)
+		}
 	}
 	return -entropy / 8
 }
