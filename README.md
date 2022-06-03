@@ -18,7 +18,7 @@ goals:
 ```
 key      | value
 ---------|----------
-32 bytes | 448 bytes
+32 bytes | 160 bytes
 ```
 
 This is large enough for the value to contain something like:
@@ -27,7 +27,7 @@ This is large enough for the value to contain something like:
 |          |------------------------------|  
 |          | next key    | padded message |
 |----------|-------------|----------------|
-| 24 bytes | 32 bytes    | 392 bytes      |
+| 24 bytes | 32 bytes    |  bytes   104   |
 
 
 The server response is signed and MAC or HMAC payload.
