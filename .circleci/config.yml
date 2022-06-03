@@ -5,8 +5,8 @@ jobs:
       - image: cimg/go:1.18
     steps:
       - checkout
-      - run: go test -v ./...
-      - run: go test -race -coverprofile=coverage.txt -covermode=atomic ./...
+      - run: make test
+      - run: make coverage
       - run: bash <(curl -s https://codecov.io/bash)
 workflows:
   version: 2
