@@ -60,7 +60,7 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 	if !ok {
 		return nil, needle.ErrorDNE
 	}
-	return needle.New(v.payload)
+	return needle.New(v.payload[:])
 }
 
 // New returns a pointer to a Store
