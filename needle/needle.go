@@ -41,8 +41,8 @@ type Needle struct {
 	internal [NeedleLength]byte
 }
 
-// New creates a Needle used for submitting a payload to a Haystack sever. It takes a payload
-// byte slice that expects to be exactly 448 bytes in length and returns a reference to a
+// New creates a Needle used for submitting a payload to a Haystack sever. It takes a Payload
+// byte array that is 160 bytes in length and returns a reference to a
 // Needle and an error. The purpose of this function is to make it
 // easy to create a new Needle from a payload. This function handles creating a blake2b
 // hash of the payload, which is used by the Needle to submit to a haystack server.
