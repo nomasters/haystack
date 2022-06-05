@@ -6,6 +6,15 @@ import (
 	"testing"
 )
 
+func TestErrorString(t *testing.T) {
+	t.Parallel()
+	m := "foo"
+	err := errorString(m)
+	if err.Error() != m {
+		t.Log("unexpected errorString")
+	}
+}
+
 func TestNew(t *testing.T) {
 	t.Parallel()
 
@@ -29,6 +38,18 @@ func TestNew(t *testing.T) {
 			expected:    hiEntExpected,
 			hasError:    false,
 			description: "high entropy payload",
+		},
+		{
+			payload:     hiEntPayload[:PayloadLength-1],
+			expected:    nil,
+			hasError:    true,
+			description: "payload invalid length (too small)",
+		},
+		{
+			payload:     append(hiEntExpected, byte(1)),
+			expected:    nil,
+			hasError:    true,
+			description: "payload invalid length (too large)",
 		},
 	}
 
