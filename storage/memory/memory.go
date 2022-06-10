@@ -64,11 +64,11 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 }
 
 // New returns a pointer to a Store
-func New() *Store {
+func New(ttl time.Duration, maxItems int) *Store {
 	s := Store{
 		internal: make(map[needle.Hash]value),
-		ttl:      10 * time.Second,
-		maxItems: 2000,
+		ttl:      ttl,
+		maxItems: maxItems,
 	}
 	s.cleanups = make(chan cleanup, s.maxItems*headroom)
 
