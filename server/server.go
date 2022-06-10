@@ -30,7 +30,7 @@ type request struct {
 
 // New returns a reference to a new Server struct
 func New() (*Server, error) {
-	memoryStore := memory.New()
+	memoryStore := memory.New(10*time.Second, 2000)
 
 	s := Server{
 		Address:  ":1337",
