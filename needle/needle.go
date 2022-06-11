@@ -29,6 +29,8 @@ const (
 	ErrorDNE = errorString("Does Not Exist")
 	// ErrorInvalidHash is an error for in invalid hash
 	ErrorInvalidHash = errorString("invalid blake2b-256 hash")
+	// ErrorByteSliceLength is an error for an invalid byte slice length passed in to New or FromBytes
+	ErrorByteSliceLength = errorString("invalid byte slice length")
 )
 
 type errorString string
@@ -46,11 +48,14 @@ type Needle struct {
 // Needle and an error. The purpose of this function is to make it
 // easy to create a new Needle from a payload. This function handles creating a blake2b
 // hash of the payload, which is used by the Needle to submit to a haystack server.
-func New(payload Payload) (*Needle, error) {
+func New(payload []byte) (*Needle, error) {
+	if len(payload) != PayloadLength {
+		return nil, ErrorByteSliceLength
+	}
 	var n Needle
-	h := blake2b.Sum256(payload[:])
+	h := blake2b.Sum256(payload)
 	copy(n.internal[:HashLength], h[:])
-	copy(n.internal[HashLength:], payload[:])
+	copy(n.internal[HashLength:], payload)
 	return &n, n.validate()
 }
 
@@ -61,10 +66,10 @@ func New(payload Payload) (*Needle, error) {
 // copies the bytes into a private [192]byte array, and validates the Needle. It returns
 // a reference to a Needle and an error.
 func FromBytes(b []byte) (*Needle, error) {
-	var n Needle
-	if err := validateLength(b, NeedleLength); err != nil {
-		return nil, err
+	if len(b) != NeedleLength {
+		return nil, ErrorByteSliceLength
 	}
+	var n Needle
 	copy(n.internal[:], b)
 	return &n, n.validate()
 }
@@ -103,19 +108,6 @@ func (n *Needle) validate() error {
 	}
 	if score := n.Entropy(); score < EntropyThreshold {
 		return fmt.Errorf("entropy score: %v, expected score > %v", score, EntropyThreshold)
-	}
-	return nil
-}
-
-// validateLength takes two arguments, a byte slice and its required
-// length. It returns an error if the length is too long or too short.
-func validateLength(b []byte, expected int) error {
-	l := len(b)
-	if l < expected {
-		return fmt.Errorf("too few bytes : %v, expected: %v", l, expected)
-	}
-	if l > expected {
-		return fmt.Errorf("too many bytes : %v, expected: %v", l, expected)
 	}
 	return nil
 }
