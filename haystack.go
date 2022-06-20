@@ -5,18 +5,15 @@ import (
 	"net"
 	"time"
 
+	"github.com/nomasters/haystack/errors"
 	"github.com/nomasters/haystack/needle"
 	"github.com/nomasters/haystack/server"
 )
 
 const (
 	// ErrTimestampExceedsThreshold is an error returned with the timestamp exceeds the acceptable threshold
-	ErrTimestampExceedsThreshold = errorString("Timestamp exceeds threshold")
+	ErrTimestampExceedsThreshold = errors.Error("Timestamp exceeds threshold")
 )
-
-type errorString string
-
-func (e errorString) Error() string { return string(e) }
 
 type options struct {
 }
