@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/nomasters/haystack/errors"
 	"golang.org/x/crypto/blake2b"
 )
 
@@ -26,16 +27,12 @@ const (
 	// EntropyThreshold is the minimum threshold of the payload's entropy allowed by the Needle validator
 	EntropyThreshold = 0.85
 	// ErrorDNE is returned when a key/value par does not exist
-	ErrorDNE = errorString("Does Not Exist")
+	ErrorDNE = errors.Error("Does Not Exist")
 	// ErrorInvalidHash is an error for in invalid hash
-	ErrorInvalidHash = errorString("invalid blake2b-256 hash")
+	ErrorInvalidHash = errors.Error("invalid blake2b-256 hash")
 	// ErrorByteSliceLength is an error for an invalid byte slice length passed in to New or FromBytes
-	ErrorByteSliceLength = errorString("invalid byte slice length")
+	ErrorByteSliceLength = errors.Error("invalid byte slice length")
 )
-
-type errorString string
-
-func (e errorString) Error() string { return string(e) }
 
 // Needle is an immutable container for a [192]byte array that containers a 160 byte payload
 // and a 32 byte blake2b hash of the payload.

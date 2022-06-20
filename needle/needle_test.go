@@ -6,15 +6,6 @@ import (
 	"testing"
 )
 
-func TestErrorString(t *testing.T) {
-	t.Parallel()
-	m := "foo"
-	err := errorString(m)
-	if err.Error() != m {
-		t.Log("unexpected errorString")
-	}
-}
-
 func TestNeedle(t *testing.T) {
 	t.Parallel()
 	t.Run("Bytes", func(t *testing.T) {

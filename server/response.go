@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"time"
 
+	"github.com/nomasters/haystack/errors"
 	"github.com/nomasters/haystack/needle"
 	"golang.org/x/crypto/blake2b"
 	sign "golang.org/x/crypto/nacl/sign"
@@ -22,16 +23,12 @@ const (
 	timeOffset     = ResponseLength - timeLen
 
 	// ErrInvalidResponseLen is used if the byte slice doesn't match the expected length
-	ErrInvalidResponseLen = errorString("invalid response length")
+	ErrInvalidResponseLen = errors.Error("invalid response length")
 	// ErrInvalidMAC is an error when the response hash doesn't match the derived hash
-	ErrInvalidMAC = errorString("(h)mac failed validation")
+	ErrInvalidMAC = errors.Error("(h)mac failed validation")
 	// ErrInvalidSig is an error used when the signature fails validation.
-	ErrInvalidSig = errorString("signature failed validation")
+	ErrInvalidSig = errors.Error("signature failed validation")
 )
-
-type errorString string
-
-func (e errorString) Error() string { return string(e) }
 
 // Response is the response type for the server, it handles HMAC and other values
 type Response struct {
