@@ -38,7 +38,7 @@ func main() {
 		go worker(taskChan, client)
 	}
 
-	reqCount := 10
+	reqCount := 1
 
 	// p := make([]byte, 448)
 	// rand.Read(p)
@@ -85,7 +85,7 @@ func processJob(j task, client *haystack.Client) {
 		*j.counter++
 		j.mu.Unlock()
 	} else {
-		fmt.Printf("Some error %v\n", err)
+		fmt.Printf("%v\n", err)
 	}
 
 }
