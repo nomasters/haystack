@@ -11,6 +11,12 @@ import (
 )
 
 const (
+	// DefaultThreshold is the default time threshold
+	// for a server response
+	DefaultThreshold = time.Duration(1 * time.Second)
+)
+
+const (
 	// ErrTimestampExceedsThreshold is an error returned with the timestamp exceeds the acceptable threshold
 	ErrTimestampExceedsThreshold = errors.Error("Timestamp exceeds threshold")
 )
@@ -77,6 +83,7 @@ func (c *Client) Get(h *needle.Hash) (*needle.Needle, error) {
 // but can also take an arbitrary number of options
 func NewClient(address string, opts ...option) (*Client, error) {
 	c := new(Client)
+	c.threshold = DefaultThreshold
 	addr, err := net.ResolveUDPAddr("udp", address)
 	if err != nil {
 		return c, err
