@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net"
 	"os"
@@ -118,12 +117,10 @@ func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, req
 		case r := <-reqChan:
 			switch len(r.body) {
 			case needle.HashLength:
-				fmt.Println("received hash")
 				if err := handleHash(conn, r, storage); err != nil {
 					log.Println(err)
 				}
 			case needle.NeedleLength:
-				fmt.Println("received needle")
 				if err := handleNeedle(conn, r, storage); err != nil {
 					log.Println(err)
 				}
@@ -153,7 +150,6 @@ func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
 	}
 
 	t := time.Now()
-	fmt.Printf("%v\n%x\n", t, n.Bytes())
 	resp := NewResponse(t, n.Hash(), nil, nil)
 
 	_, err = conn.WriteToUDP(resp.Bytes(), r.addr)
