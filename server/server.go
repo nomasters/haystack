@@ -14,6 +14,11 @@ import (
 	"github.com/nomasters/haystack/storage/memory"
 )
 
+// TODO:
+// - create Server Options to configure a new server
+// - think through udp and sockets, this could be useful
+//   for other projects in the works like heliostat
+
 // Server is a struct that contains all the settings required for a haystack server
 type Server struct {
 	Address  string
