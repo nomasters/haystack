@@ -18,6 +18,10 @@ import (
 // - create Server Options to configure a new server
 // - think through udp and sockets, this could be useful
 //   for other projects in the works like heliostat
+// - how would sockets affect *net.UDPAdder? how do I generalize?
+// - it will most likely need a UDP server implementation and
+//  unix socket dgram implementation, this would be interesting
+// to compare the speed between.
 
 // Server is a struct that contains all the settings required for a haystack server
 type Server struct {
