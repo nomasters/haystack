@@ -22,6 +22,8 @@ import (
 // - it will most likely need a UDP server implementation and
 //  unix socket dgram implementation, this would be interesting
 // to compare the speed between.
+// one advantage to unix dgram is that it has guarantees that
+// should work quite well for hooking into heliostat
 
 // Server is a struct that contains all the settings required for a haystack server
 type Server struct {
