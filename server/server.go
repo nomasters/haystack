@@ -24,6 +24,11 @@ import (
 // to compare the speed between.
 // one advantage to unix dgram is that it has guarantees that
 // should work quite well for hooking into heliostat
+// As I think about this further, this means I should abstract away
+// how the protocols work from interacting with storage and other logic
+// this would make it cleaner to manage. I should also think about
+// how I'd want to have a configuration driven approach here, but maybe I put that
+// in a cli implementation and keep this library simple
 
 // Server is a struct that contains all the settings required for a haystack server
 type Server struct {
