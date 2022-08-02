@@ -29,6 +29,7 @@ import (
 // this would make it cleaner to manage. I should also think about
 // how I'd want to have a configuration driven approach here, but maybe I put that
 // in a cli implementation and keep this library simple
+// - think about how to abstract the read/write to accomidate both packet types
 
 // Server is a struct that contains all the settings required for a haystack server
 type Server struct {
