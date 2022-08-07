@@ -29,7 +29,9 @@ import (
 // this would make it cleaner to manage. I should also think about
 // how I'd want to have a configuration driven approach here, but maybe I put that
 // in a cli implementation and keep this library simple
-// - think about how to abstract the read/write to accomidate both packet types
+// - think about how to abstract the read/write to accommodate both packet types
+
+// what logging do I want? I'm guessing it should be configurable
 
 // Server is a struct that contains all the settings required for a haystack server
 type Server struct {
@@ -69,6 +71,7 @@ func (s *Server) Run() error {
 	if err != nil {
 		return err
 	}
+	// what value should I set here?
 	reqChan := make(chan *request, 1000000)
 	go newListener(conn, reqChan)
 
@@ -111,6 +114,7 @@ func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected 
 	cancel()
 	complete := false
 	go func() {
+		// todo: set this to something longer? maybe user configurable?
 		time.Sleep(2 * time.Second)
 		if !complete {
 			log.Println("failed to gracefully exit")
