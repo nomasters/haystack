@@ -44,7 +44,7 @@ type Server struct {
 
 type request struct {
 	body []byte
-	addr *net.UDPAddr
+	addr net.Addr
 }
 
 // New returns a reference to a new Server struct
@@ -98,7 +98,7 @@ func newListener(conn *net.UDPConn, reqChan chan<- *request) {
 	buffer := make([]byte, needle.NeedleLength+1)
 
 	for {
-		n, radder, err := conn.ReadFromUDP(buffer)
+		n, radder, err := conn.ReadFrom(buffer)
 		if err != nil {
 			log.Printf("read error: %v", err)
 		}
@@ -157,7 +157,7 @@ func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
 	if err != nil {
 		return err
 	}
-	_, err = conn.WriteToUDP(n.Bytes(), r.addr)
+	_, err = conn.WriteTo(n.Bytes(), r.addr)
 	return err
 }
 
@@ -173,6 +173,6 @@ func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
 	t := time.Now()
 	resp := NewResponse(t, n.Hash(), nil, nil)
 
-	_, err = conn.WriteToUDP(resp.Bytes(), r.addr)
+	_, err = conn.WriteTo(resp.Bytes(), r.addr)
 	return err
 }

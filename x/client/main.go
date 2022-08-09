@@ -27,4 +27,11 @@ func main() {
 	if err != nil {
 		fmt.Println(err)
 	}
+	var h needle.Hash
+	copy(h[:], b[:32])
+	n2, err := client.Get(&h)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(n2)
 }
