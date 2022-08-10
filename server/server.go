@@ -63,11 +63,7 @@ func New() (*Server, error) {
 
 // Run initiates and runs the haystack server and returns an error.
 func (s *Server) Run() error {
-	addr, err := net.ResolveUDPAddr(s.Protocol, s.Address)
-	if err != nil {
-		return err
-	}
-	conn, err := net.ListenUDP(s.Protocol, addr)
+	conn, err := net.Listen(s.Protocol, s.Address)
 	if err != nil {
 		return err
 	}
@@ -94,11 +90,10 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func newListener(conn *net.UDPConn, reqChan chan<- *request) {
+func newListener(conn net.Conn, reqChan chan<- *request) {
 	buffer := make([]byte, needle.NeedleLength+1)
-
 	for {
-		n, radder, err := conn.ReadFrom(buffer)
+		n, radder, err := conn.Read(buffer)
 		if err != nil {
 			log.Printf("read error: %v", err)
 		}
