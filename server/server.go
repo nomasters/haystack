@@ -44,7 +44,7 @@ type Server struct {
 
 type request struct {
 	body []byte
-	addr net.Addr
+	addr *net.UDPAddr
 }
 
 // New returns a reference to a new Server struct
@@ -63,7 +63,11 @@ func New() (*Server, error) {
 
 // Run initiates and runs the haystack server and returns an error.
 func (s *Server) Run() error {
-	conn, err := net.Listen(s.Protocol, s.Address)
+	addr, err := net.ResolveUDPAddr(s.Protocol, s.Address)
+	if err != nil {
+		return err
+	}
+	conn, err := net.ListenUDP(s.Protocol, addr)
 	if err != nil {
 		return err
 	}
@@ -90,10 +94,11 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func newListener(conn net.Conn, reqChan chan<- *request) {
+func newListener(conn *net.UDPConn, reqChan chan<- *request) {
 	buffer := make([]byte, needle.NeedleLength+1)
+
 	for {
-		n, radder, err := conn.Read(buffer)
+		n, radder, err := conn.ReadFromUDP(buffer)
 		if err != nil {
 			log.Printf("read error: %v", err)
 		}
@@ -109,7 +114,7 @@ func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected 
 	cancel()
 	complete := false
 	go func() {
-		// todo: set this to something longer? maybe user configurable?
+		// todo: set this to something longer?
 		time.Sleep(2 * time.Second)
 		if !complete {
 			log.Println("failed to gracefully exit")
@@ -152,7 +157,7 @@ func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
 	if err != nil {
 		return err
 	}
-	_, err = conn.WriteTo(n.Bytes(), r.addr)
+	_, err = conn.WriteToUDP(n.Bytes(), r.addr)
 	return err
 }
 
@@ -168,6 +173,6 @@ func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
 	t := time.Now()
 	resp := NewResponse(t, n.Hash(), nil, nil)
 
-	_, err = conn.WriteTo(resp.Bytes(), r.addr)
+	_, err = conn.WriteToUDP(resp.Bytes(), r.addr)
 	return err
 }
