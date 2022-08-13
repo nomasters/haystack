@@ -44,7 +44,7 @@ type Server struct {
 
 type request struct {
 	body []byte
-	addr *net.UDPAddr
+	addr net.Addr
 }
 
 // New returns a reference to a new Server struct
@@ -63,11 +63,8 @@ func New() (*Server, error) {
 
 // Run initiates and runs the haystack server and returns an error.
 func (s *Server) Run() error {
-	addr, err := net.ResolveUDPAddr(s.Protocol, s.Address)
-	if err != nil {
-		return err
-	}
-	conn, err := net.ListenUDP(s.Protocol, addr)
+
+	conn, err := net.ListenPacket(s.Protocol, s.Address)
 	if err != nil {
 		return err
 	}
@@ -94,14 +91,15 @@ func (s *Server) Run() error {
 	return nil
 }
 
-func newListener(conn *net.UDPConn, reqChan chan<- *request) {
+func newListener(conn net.PacketConn, reqChan chan<- *request) {
 	buffer := make([]byte, needle.NeedleLength+1)
 
 	for {
-		n, radder, err := conn.ReadFromUDP(buffer)
+		n, radder, err := conn.ReadFrom(buffer)
 		if err != nil {
 			log.Printf("read error: %v", err)
 		}
+
 		if n == needle.NeedleLength || n == needle.HashLength {
 			reqChan <- &request{body: buffer[:n], addr: radder}
 		} else {
@@ -129,7 +127,7 @@ func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected 
 	log.Println("graceful exit")
 }
 
-func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, reqChan <-chan *request, done chan<- struct{}) {
+func worker(ctx context.Context, storage storage.Storage, conn net.PacketConn, reqChan <-chan *request, done chan<- struct{}) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -150,18 +148,18 @@ func worker(ctx context.Context, storage storage.Storage, conn *net.UDPConn, req
 	}
 }
 
-func handleHash(conn *net.UDPConn, r *request, s storage.Storage) error {
+func handleHash(conn net.PacketConn, r *request, s storage.Storage) error {
 	var hash [needle.HashLength]byte
 	copy(hash[:], r.body)
 	n, err := s.Get(hash)
 	if err != nil {
 		return err
 	}
-	_, err = conn.WriteToUDP(n.Bytes(), r.addr)
+	_, err = conn.WriteTo(n.Bytes(), r.addr)
 	return err
 }
 
-func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
+func handleNeedle(conn net.PacketConn, r *request, s storage.Storage) error {
 	n, err := needle.FromBytes(r.body)
 	if err != nil {
 		return err
@@ -173,6 +171,6 @@ func handleNeedle(conn *net.UDPConn, r *request, s storage.Storage) error {
 	t := time.Now()
 	resp := NewResponse(t, n.Hash(), nil, nil)
 
-	_, err = conn.WriteToUDP(resp.Bytes(), r.addr)
+	_, err = conn.WriteTo(resp.Bytes(), r.addr)
 	return err
 }

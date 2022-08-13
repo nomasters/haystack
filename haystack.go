@@ -28,7 +28,7 @@ type option func(*options)
 
 // Client represents a haystack client with a UDP connection
 type Client struct {
-	conn      *net.UDPConn
+	conn      net.Conn
 	pubkey    *[32]byte
 	preshared *[64]byte
 	threshold time.Duration
@@ -84,11 +84,7 @@ func (c *Client) Get(h *needle.Hash) (*needle.Needle, error) {
 func NewClient(address string, opts ...option) (*Client, error) {
 	c := new(Client)
 	c.threshold = DefaultThreshold
-	addr, err := net.ResolveUDPAddr("udp", address)
-	if err != nil {
-		return c, err
-	}
-	conn, err := net.DialUDP("udp", nil, addr)
+	conn, err := net.Dial("udp", address)
 	if err != nil {
 		return c, err
 	}
