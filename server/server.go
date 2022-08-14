@@ -47,17 +47,31 @@ type request struct {
 	addr net.Addr
 }
 
+type option func(*Server) error
+
+const (
+	defaultAddress  = ":1337"
+	defaultTTL      = 60 * 60 * 24
+	defaultProtocol = "udp"
+)
+
 // New returns a reference to a new Server struct
-func New() (*Server, error) {
-	memoryStore := memory.New(10*time.Second, 2000)
+func New(address string, opts ...option) (*Server, error) {
 
 	s := Server{
-		Address:  ":1337",
-		TTL:      500,
-		Protocol: "udp",
+		Address:  defaultAddress,
+		TTL:      defaultTTL,
+		Protocol: defaultProtocol,
 		Workers:  runtime.NumCPU(),
-		Storage:  memoryStore,
+		Storage:  memory.New(10*time.Second, 2000),
 	}
+
+	for _, opt := range opts {
+		if err := opt(&s); err != nil {
+			return &s, err
+		}
+	}
+
 	return &s, nil
 }
 
