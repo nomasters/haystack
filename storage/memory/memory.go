@@ -60,6 +60,7 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 	if !ok {
 		return nil, needle.ErrorDNE
 	}
+	// TODO: this should be FromBytes, not New
 	return needle.New(v.payload[:])
 }
 
