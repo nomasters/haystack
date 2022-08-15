@@ -55,15 +55,20 @@ const (
 	defaultProtocol = "udp"
 )
 
+var (
+	defaultWorkers = runtime.NumCPU()
+	defaultStorage = memory.New(10*time.Second, 2000)
+)
+
 // New returns a reference to a new Server struct
-func New(address string, opts ...option) (*Server, error) {
+func New(opts ...option) (*Server, error) {
 
 	s := Server{
 		Address:  defaultAddress,
 		TTL:      defaultTTL,
 		Protocol: defaultProtocol,
-		Workers:  runtime.NumCPU(),
-		Storage:  memory.New(10*time.Second, 2000),
+		Workers:  defaultWorkers,
+		Storage:  defaultStorage,
 	}
 
 	for _, opt := range opts {
