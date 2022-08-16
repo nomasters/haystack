@@ -33,13 +33,13 @@ import (
 
 // what logging do I want? I'm guessing it should be configurable
 
-// Server is a struct that contains all the settings required for a haystack server
-type Server struct {
-	Address  string
-	TTL      uint64
-	Protocol string
-	Storage  storage.Storage
-	Workers  int
+// server is a struct that contains all the settings required for a haystack server
+type server struct {
+	address  string
+	ttl      uint64
+	protocol string
+	storage  storage.Storage
+	workers  int
 }
 
 type request struct {
@@ -47,7 +47,7 @@ type request struct {
 	addr net.Addr
 }
 
-type option func(*Server) error
+type option func(*server) error
 
 const (
 	defaultAddress  = ":1337"
@@ -60,30 +60,24 @@ var (
 	defaultStorage = memory.New(10*time.Second, 2000)
 )
 
-// New returns a reference to a new Server struct
-func New(opts ...option) (*Server, error) {
+// ListenAndServe initiates and runs the haystack server and returns an error.
+func ListenAndServe(opts ...option) error {
 
-	s := Server{
-		Address:  defaultAddress,
-		TTL:      defaultTTL,
-		Protocol: defaultProtocol,
-		Workers:  defaultWorkers,
-		Storage:  defaultStorage,
+	s := server{
+		address:  defaultAddress,
+		ttl:      defaultTTL,
+		protocol: defaultProtocol,
+		workers:  defaultWorkers,
+		storage:  defaultStorage,
 	}
 
 	for _, opt := range opts {
 		if err := opt(&s); err != nil {
-			return &s, err
+			return err
 		}
 	}
 
-	return &s, nil
-}
-
-// Run initiates and runs the haystack server and returns an error.
-func (s *Server) Run() error {
-
-	conn, err := net.ListenPacket(s.Protocol, s.Address)
+	conn, err := net.ListenPacket(s.protocol, s.address)
 	if err != nil {
 		return err
 	}
@@ -99,14 +93,14 @@ func (s *Server) Run() error {
 		signal.Stop(stopSig)
 	}()
 
-	doneChan := make(chan struct{}, s.Workers)
+	doneChan := make(chan struct{}, s.workers)
 
-	for i := 0; i < s.Workers; i++ {
-		go worker(ctx, s.Storage, conn, reqChan, doneChan)
+	for i := 0; i < s.workers; i++ {
+		go worker(ctx, s.storage, conn, reqChan, doneChan)
 	}
 
 	<-stopSig
-	gracefulShutdown(cancel, doneChan, s.Workers)
+	gracefulShutdown(cancel, doneChan, s.workers)
 	return nil
 }
 
