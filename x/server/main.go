@@ -7,12 +7,7 @@ import (
 )
 
 func main() {
-
-	svr, err := server.New()
-	if err != nil {
-		panic(err)
-	}
-	if err := svr.Run(); err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		fmt.Println(err)
 	}
 }
