@@ -35,11 +35,13 @@ import (
 
 // server is a struct that contains all the settings required for a haystack server
 type server struct {
-	address  string
-	ttl      uint64
-	protocol string
-	storage  storage.Storage
-	workers  int
+	address     string
+	ttl         uint64
+	protocol    string
+	storage     storage.Storage
+	workers     int
+	ctx         context.Context
+	gracePeriod time.Duration
 }
 
 type request struct {
@@ -47,7 +49,7 @@ type request struct {
 	addr net.Addr
 }
 
-type option func(*server) error
+type Option func(*server) error
 
 const (
 	defaultAddress  = ":1337"
@@ -55,20 +57,17 @@ const (
 	defaultProtocol = "udp"
 )
 
-var (
-	defaultWorkers = runtime.NumCPU()
-	defaultStorage = memory.New(10*time.Second, 2000)
-)
-
 // ListenAndServe initiates and runs the haystack server and returns an error.
-func ListenAndServe(opts ...option) error {
+func ListenAndServe(opts ...Option) error {
 
 	s := server{
-		address:  defaultAddress,
-		ttl:      defaultTTL,
-		protocol: defaultProtocol,
-		workers:  defaultWorkers,
-		storage:  defaultStorage,
+		address:     defaultAddress,
+		ttl:         defaultTTL,
+		protocol:    defaultProtocol,
+		workers:     runtime.NumCPU(),
+		storage:     memory.New(10*time.Second, 2000),
+		ctx:         context.Background(),
+		gracePeriod: 2 * time.Second,
 	}
 
 	for _, opt := range opts {
@@ -82,10 +81,10 @@ func ListenAndServe(opts ...option) error {
 		return err
 	}
 	// what value should I set here?
-	reqChan := make(chan *request, 1000000)
+	reqChan := make(chan *request, s.workers*64)
 	go newListener(conn, reqChan)
 
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(s.ctx)
 	stopSig := make(chan os.Signal, 1)
 	signal.Notify(stopSig, os.Interrupt)
 
@@ -100,7 +99,7 @@ func ListenAndServe(opts ...option) error {
 	}
 
 	<-stopSig
-	gracefulShutdown(cancel, doneChan, s.workers)
+	gracefulShutdown(cancel, doneChan, s.workers, s.gracePeriod)
 	return nil
 }
 
@@ -121,12 +120,12 @@ func newListener(conn net.PacketConn, reqChan chan<- *request) {
 	}
 }
 
-func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected int) {
+func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected int, gracePeriod time.Duration) {
 	cancel()
 	complete := false
 	go func() {
 		// todo: set this to something longer?
-		time.Sleep(2 * time.Second)
+		time.Sleep(gracePeriod)
 		if !complete {
 			log.Println("failed to gracefully exit")
 			os.Exit(1)
