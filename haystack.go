@@ -13,7 +13,7 @@ import (
 const (
 	// DefaultThreshold is the default time threshold
 	// for a server response
-	DefaultThreshold = time.Duration(1 * time.Second)
+	DefaultThreshold = time.Duration(3 * time.Second)
 )
 
 const (
