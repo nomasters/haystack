@@ -25,7 +25,7 @@ const (
 	// NeedleLength is the number of bytes required for a valid needle.
 	NeedleLength = HashLength + PayloadLength
 	// EntropyThreshold is the minimum threshold of the payload's entropy allowed by the Needle validator
-	EntropyThreshold = 0.85
+	EntropyThreshold = 0.80
 	// ErrorDNE is returned when a key/value par does not exist
 	ErrorDNE = errors.Error("Does Not Exist")
 	// ErrorInvalidHash is an error for in invalid hash
