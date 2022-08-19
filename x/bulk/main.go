@@ -35,7 +35,7 @@ func main() {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	taskChan := make(chan task, procs*64)
+	taskChan := make(chan task)
 
 	for i := 0; i < procs; i++ {
 		go worker(taskChan, client)
