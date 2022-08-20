@@ -28,20 +28,18 @@ func main() {
 		return
 	}
 
-	defer client.Close()
-
 	counter := 0
 
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	taskChan := make(chan task)
+	taskChan := make(chan task, 30)
 
 	for i := 0; i < procs; i++ {
 		go worker(taskChan, client)
 	}
 
-	reqCount := 2
+	reqCount := 10000
 	randReq := make([][]byte, reqCount)
 
 	for i := 0; i < reqCount; i++ {
@@ -51,7 +49,6 @@ func main() {
 		if err != nil {
 			fmt.Println(err)
 		}
-		fmt.Printf("%x\n", n.Bytes())
 		randReq[i] = n.Bytes()
 
 	}
@@ -94,6 +91,6 @@ func processJob(j task, client *haystack.Client) {
 		*j.counter++
 		j.mu.Unlock()
 	} else {
-		fmt.Printf("%v\n", err)
+		fmt.Printf("oh no: %v\n", err)
 	}
 }
