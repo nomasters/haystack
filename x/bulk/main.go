@@ -33,13 +33,16 @@ func main() {
 	var wg sync.WaitGroup
 	var mu sync.Mutex
 
-	taskChan := make(chan task, 30)
+	taskChan := make(chan task)
 
 	for i := 0; i < procs; i++ {
 		go worker(taskChan, client)
 	}
 
-	reqCount := 10000
+	// TODO: work out "oh no: (h)mac failed validation" issue
+	// this seems to be possibly related to race conditions on ports?
+
+	reqCount := 5
 	randReq := make([][]byte, reqCount)
 
 	for i := 0; i < reqCount; i++ {
