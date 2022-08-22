@@ -35,6 +35,10 @@ type Response struct {
 	internal [ResponseLength]byte
 }
 
+// TODO: add needle Hash as prefix to response.
+// this makes it easier to sort out the response client side as well as verify
+// the mac
+
 // NewResponse takes a timestamp, needleHash (needle.Hash), and optionally a preshared key and a privateKey.
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
 // it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
