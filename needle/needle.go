@@ -53,7 +53,10 @@ func New(payload []byte) (*Needle, error) {
 	h := blake2b.Sum256(payload)
 	copy(n.internal[:HashLength], h[:])
 	copy(n.internal[HashLength:], payload)
-	return &n, n.validate()
+	if err := n.validate(); err != nil {
+		return nil, err
+	}
+	return &n, nil
 }
 
 // FromBytes is intended convert raw bytes (from UDP or storage) into a Needle.
@@ -68,7 +71,10 @@ func FromBytes(b []byte) (*Needle, error) {
 	}
 	var n Needle
 	copy(n.internal[:], b)
-	return &n, n.validate()
+	if err := n.validate(); err != nil {
+		return nil, err
+	}
+	return &n, nil
 }
 
 // Hash returns a copy of the bytes of the blake2b 256 hash of the Needle payload.
