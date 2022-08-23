@@ -1,7 +1,7 @@
 package server
 
 import (
-	"bytes"
+	"crypto/subtle"
 	"encoding/binary"
 	"math/rand"
 	"time"
@@ -16,11 +16,10 @@ const (
 	sigLen     = sign.Overhead
 	hashLen    = blake2b.Size256
 	timeLen    = 8
-	prefixLen  = sigLen + hashLen
+	prefixLen  = hashLen + sigLen + hashLen
 	messageLen = hashLen + timeLen
-	// ResponseLength is sigLen + hashLen + timeLen
-	ResponseLength = sigLen + hashLen + timeLen
-	timeOffset     = ResponseLength - timeLen
+	// ResponseLength is needle Hash + sigLen + (h)mac length + timeLen
+	ResponseLength = prefixLen + timeLen
 
 	// ErrInvalidResponseLen is used if the byte slice doesn't match the expected length
 	ErrInvalidResponseLen = errors.Error("invalid response length")
@@ -28,6 +27,8 @@ const (
 	ErrInvalidMAC = errors.Error("(h)mac failed validation")
 	// ErrInvalidSig is an error used when the signature fails validation.
 	ErrInvalidSig = errors.Error("signature failed validation")
+	// ErrInvalidHash is an error used when the need hash doesn't match.
+	ErrInvalidHash = errors.Error("signature failed validation")
 )
 
 // Response is the response type for the server, it handles HMAC and other values
@@ -46,7 +47,7 @@ func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[64]
 	ts := timeToBytes(timestamp)
 	h := mac(needleHash, ts)
 	if presharedKey != nil {
-		h = hmac(presharedKey, h)
+		h = hmac(*presharedKey, h)
 	}
 	m := make([]byte, messageLen)
 	copy(m[:hashLen], h)
@@ -56,8 +57,21 @@ func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[64]
 		rand.Read(pk[:])
 		privateKey = &pk
 	}
-	copy(r.internal[:], sign.Sign(nil, m, privateKey))
+	copy(r.internal[:], sign.Sign(needleHash[:], m, privateKey))
 	return r
+}
+
+// Hash returns the needle Hash from the response
+func (r Response) Hash() needle.Hash {
+	var n needle.Hash
+	copy(n[:], r.internal[:hashLen])
+	return n
+}
+
+// HashBytes returns the needle Hash as a byte slice.
+func (r Response) HashBytes() []byte {
+	h := r.Hash()
+	return h[:]
 }
 
 // Bytes returns a byte slice of a Response
@@ -67,21 +81,25 @@ func (r Response) Bytes() []byte {
 
 // Timestamp returns time.Time encoded timestamp
 func (r Response) Timestamp() time.Time {
-	return bytesToTime(r.internal[timeOffset:])
+	return bytesToTime(r.internal[prefixLen:])
 }
 
 // Validate takes a hash and optionally a pubkey and presharedKey to validate the Response message.
 // If no error is found, it returns nil.
 func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, presharedKey *[64]byte) error {
-	h := mac(needleHash, r.internal[timeOffset:])
+	if subtle.ConstantTimeCompare(r.HashBytes(), needleHash[:]) == 0 {
+		return ErrInvalidHash
+	}
+
+	h := mac(needleHash, r.internal[prefixLen:])
 	if presharedKey != nil {
-		h = hmac(presharedKey, h)
+		h = hmac(*presharedKey, h)
 	}
 	m := make([]byte, messageLen)
 	copy(m[:hashLen], h)
-	copy(m[hashLen:], r.internal[timeOffset:])
+	copy(m[hashLen:], r.internal[prefixLen:])
 
-	if !bytes.Equal(r.internal[sigLen:], m) {
+	if subtle.ConstantTimeCompare(r.internal[sigLen:], m) == 0 {
 		return ErrInvalidMAC
 	}
 	if publicKey != nil {
@@ -98,7 +116,7 @@ func mac(key needle.Hash, message []byte) []byte {
 	return mac.Sum(nil)
 }
 
-func hmac(key *[64]byte, message []byte) (b []byte) {
+func hmac(key [64]byte, message []byte) (b []byte) {
 	mac, _ := blake2b.New256(key[32:])
 	hmac, _ := blake2b.New256(key[:32])
 	mac.Write(message)
