@@ -119,13 +119,13 @@ func (n *Needle) validate() error {
 // and returns a float64 score between 0 and 1
 func entropy(p Payload) float64 {
 	var entropy float64
-	var freqArray [256]float64
+	var freqArray [256]uint8
 	for i := 0; i < PayloadLength; i++ {
 		freqArray[p[i]]++
 	}
 	for i := 0; i < 256; i++ {
 		if freqArray[i] != 0 {
-			freq := freqArray[i] / payloadLengthFloat
+			freq := float64(freqArray[i]) / payloadLengthFloat
 			entropy += freq * math.Log2(freq)
 		}
 	}
