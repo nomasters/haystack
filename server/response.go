@@ -3,6 +3,7 @@ package server
 import (
 	"crypto/subtle"
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"time"
 
@@ -16,7 +17,8 @@ const (
 	sigLen     = sign.Overhead
 	hashLen    = blake2b.Size256
 	timeLen    = 8
-	prefixLen  = hashLen + sigLen + hashLen
+	headerLen  = hashLen + sigLen
+	prefixLen  = headerLen + hashLen
 	messageLen = hashLen + timeLen
 	// ResponseLength is needle Hash + sigLen + (h)mac length + timeLen
 	ResponseLength = prefixLen + timeLen
@@ -99,11 +101,13 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 	copy(m[:hashLen], h)
 	copy(m[hashLen:], r.internal[prefixLen:])
 
-	if subtle.ConstantTimeCompare(r.internal[sigLen:], m) == 0 {
+	if subtle.ConstantTimeCompare(r.internal[headerLen:], m) == 0 {
+		fmt.Printf("internal %x\n", r.internal[headerLen:])
+		fmt.Printf("message  %x\n", m)
 		return ErrInvalidMAC
 	}
 	if publicKey != nil {
-		if _, validSig := sign.Open(nil, r.internal[:], publicKey); !validSig {
+		if _, validSig := sign.Open(nil, r.internal[hashLen:], publicKey); !validSig {
 			return ErrInvalidSig
 		}
 	}
