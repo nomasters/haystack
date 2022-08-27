@@ -64,6 +64,10 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 	return needle.New(v.payload[:])
 }
 
+// Close is meant to conform to the GetSetCloser interface.
+// TODO: put a proper cleanup step here
+func (s *Store) Close() error { return nil }
+
 // New returns a pointer to a Store
 func New(ttl time.Duration, maxItems int) *Store {
 	s := Store{

@@ -38,7 +38,7 @@ type server struct {
 	address     string
 	ttl         uint64
 	protocol    string
-	storage     storage.Storage
+	storage     storage.GetSetCloser
 	workers     int
 	ctx         context.Context
 	gracePeriod time.Duration
@@ -49,6 +49,7 @@ type request struct {
 	addr net.Addr
 }
 
+// Option TBD
 type Option func(*server) error
 
 const (
@@ -139,7 +140,7 @@ func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected 
 	log.Println("graceful exit")
 }
 
-func worker(ctx context.Context, storage storage.Storage, conn net.PacketConn, reqChan <-chan *request, done chan<- struct{}) {
+func worker(ctx context.Context, storage storage.GetSetCloser, conn net.PacketConn, reqChan <-chan *request, done chan<- struct{}) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -160,7 +161,7 @@ func worker(ctx context.Context, storage storage.Storage, conn net.PacketConn, r
 	}
 }
 
-func handleHash(conn net.PacketConn, r *request, s storage.Storage) error {
+func handleHash(conn net.PacketConn, r *request, s storage.GetSetCloser) error {
 	var hash [needle.HashLength]byte
 	copy(hash[:], r.body)
 	n, err := s.Get(hash)
@@ -171,7 +172,7 @@ func handleHash(conn net.PacketConn, r *request, s storage.Storage) error {
 	return err
 }
 
-func handleNeedle(conn net.PacketConn, r *request, s storage.Storage) error {
+func handleNeedle(conn net.PacketConn, r *request, s storage.GetSetCloser) error {
 	n, err := needle.FromBytes(r.body)
 	if err != nil {
 		return err
