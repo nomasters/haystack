@@ -3,7 +3,6 @@ package server
 import (
 	"crypto/subtle"
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"time"
 
@@ -38,10 +37,6 @@ type Response struct {
 	internal [ResponseLength]byte
 }
 
-// TODO: add needle Hash as prefix to response.
-// this makes it easier to sort out the response client side as well as verify
-// the mac
-
 // NewResponse takes a timestamp, needleHash (needle.Hash), and optionally a preshared key and a privateKey.
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
 // it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
@@ -54,12 +49,19 @@ func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[64]
 	m := make([]byte, messageLen)
 	copy(m[:hashLen], h)
 	copy(m[hashLen:], ts)
-	if privateKey == nil {
-		var pk [64]byte
-		rand.Read(pk[:])
-		privateKey = &pk
+
+	// sign if a privateKey is present, otherwise generate fake data and insert in the signing bytes
+	if privateKey != nil {
+		copy(r.internal[:], sign.Sign(needleHash[:], m, privateKey))
+	} else {
+		var b [64]byte
+		rand.Read(b[:])
+		privateKey = &b
+		copy(r.internal[:hashLen], needleHash[:])
+		copy(r.internal[hashLen:headerLen], b[:])
+		copy(r.internal[headerLen:], m)
 	}
-	copy(r.internal[:], sign.Sign(needleHash[:], m, privateKey))
+
 	return r
 }
 
@@ -102,8 +104,6 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 	copy(m[hashLen:], r.internal[prefixLen:])
 
 	if subtle.ConstantTimeCompare(r.internal[headerLen:], m) == 0 {
-		fmt.Printf("internal %x\n", r.internal[headerLen:])
-		fmt.Printf("message  %x\n", m)
 		return ErrInvalidMAC
 	}
 	if publicKey != nil {
