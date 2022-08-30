@@ -41,14 +41,20 @@ type Response struct {
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
 // it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
 func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (r Response) {
-	ts := timeToBytes(timestamp)
-	h := mac(needleHash, ts)
-	if presharedKey != nil {
-		h = hmac(*presharedKey, h)
-	}
+	var h []byte
 	m := make([]byte, messageLen)
-	copy(m[:hashLen], h)
+	ts := timeToBytes(timestamp)
+
+	copy(m[:hashLen], needleHash[:])
 	copy(m[hashLen:], ts)
+
+	if presharedKey != nil {
+		h = hmac(*presharedKey, m)
+	} else {
+		h = mac(needleHash, ts)
+	}
+
+	copy(m[:hashLen], h)
 
 	// sign if a privateKey is present, otherwise generate fake data and insert in the signing bytes
 	if privateKey != nil {
@@ -95,13 +101,18 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 		return ErrInvalidHash
 	}
 
-	h := mac(needleHash, r.internal[prefixLen:])
-	if presharedKey != nil {
-		h = hmac(*presharedKey, h)
-	}
+	var h []byte
 	m := make([]byte, messageLen)
-	copy(m[:hashLen], h)
+	copy(m[:hashLen], needleHash[:])
 	copy(m[hashLen:], r.internal[prefixLen:])
+
+	if presharedKey != nil {
+		h = hmac(*presharedKey, m)
+	} else {
+		h = mac(needleHash, r.internal[prefixLen:])
+	}
+
+	copy(m[:hashLen], h)
 
 	if subtle.ConstantTimeCompare(r.internal[headerLen:], m) == 0 {
 		return ErrInvalidMAC
