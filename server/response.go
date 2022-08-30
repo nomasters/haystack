@@ -41,20 +41,7 @@ type Response struct {
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
 // it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
 func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[64]byte, privateKey *[64]byte) (r Response) {
-	var h []byte
-	m := make([]byte, messageLen)
-	ts := timeToBytes(timestamp)
-
-	copy(m[:hashLen], needleHash[:])
-	copy(m[hashLen:], ts)
-
-	if presharedKey != nil {
-		h = hmac(*presharedKey, m)
-	} else {
-		h = mac(needleHash, ts)
-	}
-
-	copy(m[:hashLen], h)
+	m := hashedMessage(needleHash, timestamp, presharedKey)
 
 	// sign if a privateKey is present, otherwise generate fake data and insert in the signing bytes
 	if privateKey != nil {
@@ -101,18 +88,7 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 		return ErrInvalidHash
 	}
 
-	var h []byte
-	m := make([]byte, messageLen)
-	copy(m[:hashLen], needleHash[:])
-	copy(m[hashLen:], r.internal[prefixLen:])
-
-	if presharedKey != nil {
-		h = hmac(*presharedKey, m)
-	} else {
-		h = mac(needleHash, r.internal[prefixLen:])
-	}
-
-	copy(m[:hashLen], h)
+	m := hashedMessage(needleHash, r.Timestamp(), presharedKey)
 
 	if subtle.ConstantTimeCompare(r.internal[headerLen:], m) == 0 {
 		return ErrInvalidMAC
@@ -123,20 +99,6 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 		}
 	}
 	return nil
-}
-
-func mac(key needle.Hash, message []byte) []byte {
-	mac, _ := blake2b.New256(key[:])
-	mac.Write(message)
-	return mac.Sum(nil)
-}
-
-func hmac(key [64]byte, message []byte) (b []byte) {
-	mac, _ := blake2b.New256(key[32:])
-	hmac, _ := blake2b.New256(key[:32])
-	mac.Write(message)
-	hmac.Write(mac.Sum(nil))
-	return hmac.Sum(nil)
 }
 
 // ResponseFromBytes takes a byte slice and returns a Response and error
@@ -160,4 +122,36 @@ func bytesToTime(b []byte) time.Time {
 	}
 	t := int64(binary.LittleEndian.Uint64(b))
 	return time.Unix(t, 0)
+}
+
+func mac(key needle.Hash, message []byte) []byte {
+	mac, _ := blake2b.New256(key[:])
+	mac.Write(message)
+	return mac.Sum(nil)
+}
+
+func hmac(key [64]byte, message []byte) (b []byte) {
+	mac, _ := blake2b.New256(key[32:])
+	hmac, _ := blake2b.New256(key[:32])
+	mac.Write(message)
+	hmac.Write(mac.Sum(nil))
+	return hmac.Sum(nil)
+}
+
+func hashedMessage(needleHash needle.Hash, timestamp time.Time, presharedKey *[64]byte) []byte {
+	h := make([]byte, hashLen)
+	m := make([]byte, messageLen)
+	ts := timeToBytes(timestamp)
+
+	copy(m[:hashLen], needleHash[:])
+	copy(m[hashLen:], ts)
+
+	if presharedKey != nil {
+		h = hmac(*presharedKey, m)
+	} else {
+		h = mac(needleHash, ts)
+	}
+
+	copy(m[:hashLen], h)
+	return m
 }
