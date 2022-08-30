@@ -31,7 +31,7 @@ type Client struct {
 	raddr string
 	// conn      net.Conn
 	pubkey    *[32]byte
-	preshared *[64]byte
+	preshared *[32]byte
 	threshold time.Duration
 }
 
