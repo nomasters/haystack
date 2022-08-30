@@ -87,16 +87,16 @@ func TestResponse(t *testing.T) {
 		copy(pubkey[:], pk)
 
 		var badPubkey [32]byte
-		var badPreshared [64]byte
+		var badPreshared [32]byte
 
-		var preshared [64]byte
+		var preshared [32]byte
 		rand.Read(preshared[:])
 
 		testTable := []struct {
 			resp      Response
 			hash      needle.Hash
 			pubkey    *[32]byte
-			preshared *[64]byte
+			preshared *[32]byte
 			err       error
 		}{
 			{NewResponse(time.Now(), h, &preshared, &priv), h, &pubkey, &preshared, nil},
@@ -141,7 +141,7 @@ func BenchmarkNewResponseBothKeys(b *testing.B) {
 
 	var priv [64]byte
 	rand.Read(priv[:])
-	var preshared [64]byte
+	var preshared [32]byte
 	rand.Read(preshared[:])
 	now := time.Now()
 
