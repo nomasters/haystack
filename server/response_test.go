@@ -139,8 +139,11 @@ func BenchmarkNewResponseBothKeys(b *testing.B) {
 	n, _ := needle.New(p)
 	h := n.Hash()
 
+	_, sk, _ := ed25519.GenerateKey(nil)
 	var priv [64]byte
-	rand.Read(priv[:])
+
+	copy(priv[:], sk)
+
 	var preshared [32]byte
 	rand.Read(preshared[:])
 	now := time.Now()
