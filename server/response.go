@@ -111,9 +111,7 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 	if subtle.ConstantTimeCompare(r.HashBytes(), needleHash[:]) == 0 {
 		return ErrInvalidHash
 	}
-
 	m := mac(r.messageBytes(), presharedKey)
-
 	if subtle.ConstantTimeCompare(r.macBytes(), m) == 0 {
 		return ErrInvalidMAC
 	}
@@ -152,10 +150,8 @@ func mac(m []byte, psk *[32]byte) (h []byte) {
 	if psk != nil {
 		mac, _ := blake2b.New256(psk[:])
 		mac.Write(m)
-		h = mac.Sum(nil)
-	} else {
-		b := blake2b.Sum256(m)
-		h = b[:]
+		return mac.Sum(nil)
 	}
-	return h
+	b := blake2b.Sum256(m)
+	return b[:]
 }
