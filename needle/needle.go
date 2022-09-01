@@ -36,9 +36,7 @@ const (
 
 // Needle is an immutable container for a [192]byte array that containers a 160 byte payload
 // and a 32 byte blake2b hash of the payload.
-type Needle struct {
-	internal [NeedleLength]byte
-}
+type Needle struct{ internal [NeedleLength]byte }
 
 // New creates a Needle used for submitting a payload to a Haystack sever. It takes a Payload
 // byte slice that is 160 bytes in length and returns a reference to a
