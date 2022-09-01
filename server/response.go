@@ -43,22 +43,19 @@ type Response struct{ internal [ResponseLength]byte }
 // it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
 func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[32]byte, privateKey *[64]byte) (r Response) {
 	m := make([]byte, messageLen)
-	s := make([]byte, 64)
 
 	copy(m[:hashLen], needleHash[:])
-	copy(m[hashLen:], timeToBytes(timestamp))
-
-	h := mac(m, presharedKey)
+	copy(m[hashLen:messageLen], timeToBytes(timestamp))
+	copy(r.internal[:messageLen], m)
 
 	// sign if a privateKey is present, otherwise generate fake data and insert in the signing bytes
 	if privateKey != nil {
-		s = sign.Sign(nil, m, privateKey)
+		copy(r.internal[messageLen:headerLen], sign.Sign(nil, m, privateKey))
 	} else {
-		rand.Read(s)
+		rand.Read(r.internal[messageLen:headerLen])
 	}
-	copy(r.internal[:messageLen], m)
-	copy(r.internal[messageLen:headerLen], s[:sigLen])
-	copy(r.internal[headerLen:], h)
+
+	copy(r.internal[headerLen:], mac(m, presharedKey))
 
 	return r
 }
@@ -94,7 +91,7 @@ func (r Response) macBytes() []byte {
 }
 
 func (r Response) sigBytes() []byte {
-	m := make([]byte, sigLen+messageLen)
+	m := make([]byte, headerLen)
 	copy(m[:sigLen], r.internal[messageLen:headerLen])
 	copy(m[sigLen:], r.messageBytes())
 	return m
