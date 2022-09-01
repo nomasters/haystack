@@ -15,12 +15,13 @@ import (
 const (
 	sigLen     = sign.Overhead
 	hashLen    = blake2b.Size256
+	macLen     = blake2b.Size256
 	timeLen    = 8
-	headerLen  = hashLen + sigLen
-	prefixLen  = headerLen + hashLen
 	messageLen = hashLen + timeLen
+	headerLen  = messageLen + sigLen
+
 	// ResponseLength is needle Hash + sigLen + (h)mac length + timeLen
-	ResponseLength = prefixLen + timeLen
+	ResponseLength = messageLen + sigLen + macLen
 
 	// ErrInvalidResponseLen is used if the byte slice doesn't match the expected length
 	ErrInvalidResponseLen = errors.Error("invalid response length")
@@ -32,27 +33,32 @@ const (
 	ErrInvalidHash = errors.Error("signature failed validation")
 )
 
+// needleHash || timestamp || sig || mac
+
 // Response is the response type for the server, it handles HMAC and other values
-type Response struct {
-	internal [ResponseLength]byte
-}
+type Response struct{ internal [ResponseLength]byte }
 
 // NewResponse takes a timestamp, needleHash (needle.Hash), and optionally a preshared key and a privateKey.
 // if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
 // it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
 func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[32]byte, privateKey *[64]byte) (r Response) {
-	m := messageWithHash(needleHash, timestamp, presharedKey)
+	m := make([]byte, messageLen)
+	s := make([]byte, 64)
+
+	copy(m[:hashLen], needleHash[:])
+	copy(m[hashLen:], timeToBytes(timestamp))
+
+	h := mac(m, presharedKey)
 
 	// sign if a privateKey is present, otherwise generate fake data and insert in the signing bytes
 	if privateKey != nil {
-		copy(r.internal[:], sign.Sign(needleHash[:], m, privateKey))
+		s = sign.Sign(nil, m, privateKey)
 	} else {
-		var b [64]byte
-		rand.Read(b[:])
-		copy(r.internal[:hashLen], needleHash[:])
-		copy(r.internal[hashLen:headerLen], b[:])
-		copy(r.internal[headerLen:], m)
+		rand.Read(s)
 	}
+	copy(r.internal[:messageLen], m)
+	copy(r.internal[messageLen:headerLen], s[:sigLen])
+	copy(r.internal[headerLen:], h)
 
 	return r
 }
@@ -76,7 +82,22 @@ func (r Response) Bytes() []byte {
 }
 
 func (r Response) timestampBytes() []byte {
-	return r.internal[prefixLen:]
+	return r.internal[hashLen:messageLen]
+}
+
+func (r Response) messageBytes() []byte {
+	return r.internal[:messageLen]
+}
+
+func (r Response) macBytes() []byte {
+	return r.internal[headerLen:]
+}
+
+func (r Response) sigBytes() []byte {
+	m := make([]byte, sigLen+messageLen)
+	copy(m[:sigLen], r.internal[messageLen:headerLen])
+	copy(m[sigLen:], r.messageBytes())
+	return m
 }
 
 // Timestamp returns time.Time encoded timestamp
@@ -91,13 +112,13 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 		return ErrInvalidHash
 	}
 
-	m := messageWithHash(needleHash, r.Timestamp(), presharedKey)
+	m := mac(r.messageBytes(), presharedKey)
 
-	if subtle.ConstantTimeCompare(r.internal[headerLen:], m) == 0 {
+	if subtle.ConstantTimeCompare(r.macBytes(), m) == 0 {
 		return ErrInvalidMAC
 	}
 	if publicKey != nil {
-		if _, validSig := sign.Open(nil, r.internal[hashLen:], publicKey); !validSig {
+		if _, validSig := sign.Open(nil, r.sigBytes(), publicKey); !validSig {
 			return ErrInvalidSig
 		}
 	}
@@ -127,21 +148,14 @@ func bytesToTime(b []byte) time.Time {
 	return time.Unix(t, 0)
 }
 
-func messageWithHash(needleHash needle.Hash, timestamp time.Time, presharedKey *[32]byte) []byte {
-	var h []byte
-	m := make([]byte, messageLen)
-
-	copy(m[:hashLen], needleHash[:])
-	copy(m[hashLen:], timeToBytes(timestamp))
-
-	if presharedKey != nil {
-		mac, _ := blake2b.New256(presharedKey[:])
+func mac(m []byte, psk *[32]byte) (h []byte) {
+	if psk != nil {
+		mac, _ := blake2b.New256(psk[:])
 		mac.Write(m)
 		h = mac.Sum(nil)
 	} else {
 		b := blake2b.Sum256(m)
 		h = b[:]
 	}
-	copy(m[:hashLen], h)
-	return m
+	return h
 }

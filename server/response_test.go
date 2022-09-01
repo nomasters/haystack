@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/nomasters/haystack/needle"
+	"golang.org/x/crypto/blake2b"
+	sign "golang.org/x/crypto/nacl/sign"
 )
 
 func TestTimeToBytes(t *testing.T) {
@@ -79,12 +81,7 @@ func TestResponse(t *testing.T) {
 		var h needle.Hash
 		copy(h[:], b)
 
-		pk, sk, _ := ed25519.GenerateKey(nil)
-		var priv [64]byte
-		var pubkey [32]byte
-
-		copy(priv[:], sk)
-		copy(pubkey[:], pk)
+		pubkey, priv, _ := sign.GenerateKey(nil)
 
 		var badPubkey [32]byte
 		var badPreshared [32]byte
@@ -99,11 +96,11 @@ func TestResponse(t *testing.T) {
 			preshared *[32]byte
 			err       error
 		}{
-			{NewResponse(time.Now(), h, &preshared, &priv), h, &pubkey, &preshared, nil},
-			{NewResponse(time.Now(), h, nil, &priv), h, &pubkey, nil, nil},
+			{NewResponse(time.Now(), h, &preshared, priv), h, pubkey, &preshared, nil},
+			{NewResponse(time.Now(), h, nil, priv), h, pubkey, nil, nil},
 			{NewResponse(time.Now(), h, nil, nil), h, nil, nil, nil},
 			{NewResponse(time.Now(), h, &preshared, nil), h, nil, &badPreshared, ErrInvalidMAC},
-			{NewResponse(time.Now(), h, nil, &priv), h, &badPubkey, nil, ErrInvalidSig},
+			{NewResponse(time.Now(), h, nil, priv), h, &badPubkey, nil, ErrInvalidSig},
 		}
 
 		for _, test := range testTable {
@@ -116,19 +113,20 @@ func TestResponse(t *testing.T) {
 	})
 	t.Run("Bytes", func(t *testing.T) {
 		t.Parallel()
-		b, _ := hex.DecodeString("f82e0ca0d2fb1da76da6caf36a9d0d2838655632e85891216dc8b545d8f141099c774f812598fb751781df4b31d245880ef438b18d19162dbdef2d6d7cdb4ea0a0927ad5a06e5b22aeed1838472032397aa2d4584e35a8b6b522b943f668b00eabc73aeeba69e04625dff923c46217151b94d3c358e937ade50977aca965aad224a5056300000000")
-		r, _ := ResponseFromBytes(b)
-		if !bytes.Equal(b, r.Bytes()) {
+		b := blake2b.Sum256([]byte("foo"))
+		r := NewResponse(time.Now(), b, nil, nil)
+		if !bytes.Equal(r.internal[:], r.Bytes()) {
 			t.Errorf("expected:\t%x\nresult:\t%x\n", b, r.Bytes())
 		}
 	})
 	t.Run("Timestamp", func(t *testing.T) {
 		t.Parallel()
-		b, _ := hex.DecodeString("f82e0ca0d2fb1da76da6caf36a9d0d2838655632e85891216dc8b545d8f141099c774f812598fb751781df4b31d245880ef438b18d19162dbdef2d6d7cdb4ea0a0927ad5a06e5b22aeed1838472032397aa2d4584e35a8b6b522b943f668b00eabc73aeeba69e04625dff923c46217151b94d3c358e937ade50977aca965aad224a5056300000000")
-		r, _ := ResponseFromBytes(b)
 
-		expected := time.Unix(1661314340, 0)
-		if !r.Timestamp().Equal(expected) {
+		expected := time.Now()
+		b := blake2b.Sum256([]byte("foo"))
+		r := NewResponse(expected, b, nil, nil)
+
+		if r.Timestamp().Unix() != expected.Unix() {
 			t.Errorf("expected:\t%v\nresult:\t%v\n", expected, r.Timestamp())
 		}
 	})
