@@ -15,13 +15,12 @@ import (
 const (
 	sigLen     = sign.Overhead
 	hashLen    = blake2b.Size256
-	macLen     = blake2b.Size256
 	timeLen    = 8
 	messageLen = hashLen + timeLen
 	headerLen  = messageLen + sigLen
 
-	// ResponseLength is needle Hash + sigLen + (h)mac length + timeLen
-	ResponseLength = messageLen + sigLen + macLen
+	// ResponseLength is needle hash || timestamp || sig || hash
+	ResponseLength = messageLen + sigLen + hashLen
 
 	// ErrInvalidResponseLen is used if the byte slice doesn't match the expected length
 	ErrInvalidResponseLen = errors.Error("invalid response length")
@@ -33,29 +32,26 @@ const (
 	ErrInvalidHash = errors.Error("signature failed validation")
 )
 
-// needleHash || timestamp || sig || mac
-
 // Response is the response type for the server, it handles HMAC and other values
 type Response struct{ internal [ResponseLength]byte }
 
 // NewResponse takes a timestamp, needleHash (needle.Hash), and optionally a preshared key and a privateKey.
-// if the presharedKey is present, the mac is fed into an hmac with the presharedKey. If the privateKey is not nil,
-// it signs the payload with the privateKey and the message which is the hash + timestamp concatenated.
-func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[32]byte, privateKey *[64]byte) (r Response) {
-	m := make([]byte, messageLen)
+// if the presharedKey is present, the blake2b uses this key to make the hash a mac so that the client and server
+// must use this key to properly validate the response. If the privateKey is not nil, it uses NaCl Sign for the payload
+// the client must use the public key to verify the signature.
+func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[32]byte, privateKey *[64]byte) Response {
+	var r Response
 
-	copy(m[:hashLen], needleHash[:])
-	copy(m[hashLen:messageLen], timeToBytes(timestamp))
-	copy(r.internal[:messageLen], m)
+	copy(r.internal[:hashLen], needleHash[:])
+	copy(r.internal[hashLen:messageLen], timeToBytes(timestamp))
 
-	// sign if a privateKey is present, otherwise generate fake data and insert in the signing bytes
 	if privateKey != nil {
-		copy(r.internal[messageLen:headerLen], sign.Sign(nil, m, privateKey))
+		copy(r.internal[messageLen:headerLen], sign.Sign(nil, r.internal[:messageLen], privateKey))
 	} else {
 		rand.Read(r.internal[messageLen:headerLen])
 	}
 
-	copy(r.internal[headerLen:], mac(m, presharedKey))
+	copy(r.internal[headerLen:], mac(r.internal[:headerLen], presharedKey))
 
 	return r
 }
@@ -90,6 +86,10 @@ func (r Response) macBytes() []byte {
 	return r.internal[headerLen:]
 }
 
+func (r Response) messageAndSigBytes() []byte {
+	return r.internal[:headerLen]
+}
+
 func (r Response) sigBytes() []byte {
 	m := make([]byte, headerLen)
 	copy(m[:sigLen], r.internal[messageLen:headerLen])
@@ -108,7 +108,7 @@ func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, preshare
 	if subtle.ConstantTimeCompare(r.HashBytes(), needleHash[:]) == 0 {
 		return ErrInvalidHash
 	}
-	m := mac(r.messageBytes(), presharedKey)
+	m := mac(r.messageAndSigBytes(), presharedKey)
 	if subtle.ConstantTimeCompare(r.macBytes(), m) == 0 {
 		return ErrInvalidMAC
 	}
