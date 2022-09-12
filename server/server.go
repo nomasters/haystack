@@ -100,8 +100,7 @@ func ListenAndServe(opts ...Option) error {
 	}
 
 	<-stopSig
-	gracefulShutdown(cancel, doneChan, s.workers, s.gracePeriod)
-	return nil
+	return s.shutdown(cancel, doneChan)
 }
 
 func newListener(conn net.PacketConn, reqChan chan<- *request) {
@@ -121,23 +120,27 @@ func newListener(conn net.PacketConn, reqChan chan<- *request) {
 	}
 }
 
-func gracefulShutdown(cancel context.CancelFunc, done <-chan struct{}, expected int, gracePeriod time.Duration) {
+func (s *server) shutdown(cancel context.CancelFunc, done <-chan struct{}) error {
 	cancel()
 	complete := false
 	go func() {
 		// todo: set this to something longer?
-		time.Sleep(gracePeriod)
+		time.Sleep(s.gracePeriod)
 		if !complete {
 			log.Println("failed to gracefully exit")
 			os.Exit(1)
 		}
 	}()
 
-	for i := 0; i < expected; i++ {
+	for i := 0; i < s.workers; i++ {
 		<-done
+	}
+	if err := s.storage.Close(); err != nil {
+		return err
 	}
 	complete = true
 	log.Println("graceful exit")
+	return nil
 }
 
 func worker(ctx context.Context, storage storage.GetSetCloser, conn net.PacketConn, reqChan <-chan *request, done chan<- struct{}) {
