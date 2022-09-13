@@ -58,11 +58,21 @@ const (
 	defaultProtocol = "udp"
 )
 
-// ListenAndServe initiates and runs the haystack server and returns an error.
-func ListenAndServe(opts ...Option) error {
+// WithTTL takes a uint64 and sets the server ttl
+func WithTTL(ttl uint64) Option {
+	return func(svr *server) error {
+		svr.ttl = ttl
+		return nil
+	}
+}
 
+// ListenAndServe initiates and runs the haystack server and returns an error.
+func ListenAndServe(address string, opts ...Option) error {
+	if address == "" {
+		address = defaultAddress
+	}
 	s := server{
-		address:     defaultAddress,
+		address:     address,
 		ttl:         defaultTTL,
 		protocol:    defaultProtocol,
 		workers:     runtime.NumCPU(),
