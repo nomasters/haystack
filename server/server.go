@@ -35,13 +35,15 @@ import (
 
 // server is a struct that contains all the settings required for a haystack server
 type server struct {
-	address     string
-	ttl         uint64
-	protocol    string
-	storage     storage.GetSetCloser
-	workers     int
-	ctx         context.Context
-	gracePeriod time.Duration
+	address      string
+	ttl          uint64
+	protocol     string
+	storage      storage.GetSetCloser
+	workers      int
+	ctx          context.Context
+	gracePeriod  time.Duration
+	presharedKey [32]byte
+	privateKey   [64]byte
 }
 
 type request struct {
@@ -106,7 +108,7 @@ func ListenAndServe(address string, opts ...Option) error {
 	doneChan := make(chan struct{}, s.workers)
 
 	for i := 0; i < s.workers; i++ {
-		go worker(ctx, s.storage, conn, reqChan, doneChan)
+		go s.newWorker(ctx, conn, reqChan, doneChan)
 	}
 
 	<-stopSig
@@ -153,7 +155,7 @@ func (s *server) shutdown(cancel context.CancelFunc, done <-chan struct{}) error
 	return nil
 }
 
-func worker(ctx context.Context, storage storage.GetSetCloser, conn net.PacketConn, reqChan <-chan *request, done chan<- struct{}) {
+func (s *server) newWorker(ctx context.Context, conn net.PacketConn, reqChan <-chan *request, done chan<- struct{}) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -162,11 +164,11 @@ func worker(ctx context.Context, storage storage.GetSetCloser, conn net.PacketCo
 		case r := <-reqChan:
 			switch len(r.body) {
 			case needle.HashLength:
-				if err := handleHash(conn, r, storage); err != nil {
+				if err := s.handleHash(conn, r); err != nil {
 					log.Println(err)
 				}
 			case needle.NeedleLength:
-				if err := handleNeedle(conn, r, storage); err != nil {
+				if err := s.handleNeedle(conn, r); err != nil {
 					log.Println(err)
 				}
 			}
@@ -174,10 +176,10 @@ func worker(ctx context.Context, storage storage.GetSetCloser, conn net.PacketCo
 	}
 }
 
-func handleHash(conn net.PacketConn, r *request, s storage.GetSetCloser) error {
+func (s *server) handleHash(conn net.PacketConn, r *request) error {
 	var hash [needle.HashLength]byte
 	copy(hash[:], r.body)
-	n, err := s.Get(hash)
+	n, err := s.storage.Get(hash)
 	if err != nil {
 		return err
 	}
@@ -185,18 +187,17 @@ func handleHash(conn net.PacketConn, r *request, s storage.GetSetCloser) error {
 	return err
 }
 
-func handleNeedle(conn net.PacketConn, r *request, s storage.GetSetCloser) error {
+func (s *server) handleNeedle(conn net.PacketConn, r *request) error {
 	n, err := needle.FromBytes(r.body)
 	if err != nil {
 		return err
 	}
-	if err := s.Set(n); err != nil {
+	if err := s.storage.Set(n); err != nil {
 		return err
 	}
 
 	t := time.Now()
-	resp := NewResponse(t, n.Hash(), nil, nil)
-
+	resp := NewResponse(t, n.Hash(), s.presharedKey, s.privateKey)
 	_, err = conn.WriteTo(resp.Bytes(), r.addr)
 	return err
 }

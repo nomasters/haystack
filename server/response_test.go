@@ -84,7 +84,6 @@ func TestResponse(t *testing.T) {
 		pubkey, priv, _ := sign.GenerateKey(nil)
 
 		var badPubkey [32]byte
-		var badPreshared [32]byte
 
 		var preshared [32]byte
 		rand.Read(preshared[:])
@@ -93,14 +92,14 @@ func TestResponse(t *testing.T) {
 			resp      Response
 			hash      needle.Hash
 			pubkey    *[32]byte
-			preshared *[32]byte
+			preshared [32]byte
 			err       error
 		}{
-			{NewResponse(time.Now(), h, &preshared, priv), h, pubkey, &preshared, nil},
-			{NewResponse(time.Now(), h, nil, priv), h, pubkey, nil, nil},
-			{NewResponse(time.Now(), h, nil, nil), h, nil, nil, nil},
-			{NewResponse(time.Now(), h, &preshared, nil), h, nil, &badPreshared, ErrInvalidMAC},
-			{NewResponse(time.Now(), h, nil, priv), h, &badPubkey, nil, ErrInvalidSig},
+			{NewResponse(time.Now(), h, preshared, *priv), h, pubkey, preshared, nil},
+			{NewResponse(time.Now(), h, [32]byte{}, *priv), h, pubkey, [32]byte{}, nil},
+			{NewResponse(time.Now(), h, [32]byte{}, [64]byte{}), h, nil, [32]byte{}, nil},
+			{NewResponse(time.Now(), h, preshared, [64]byte{}), h, nil, [32]byte{1}, ErrInvalidMAC},
+			{NewResponse(time.Now(), h, [32]byte{}, *priv), h, &badPubkey, [32]byte{}, ErrInvalidSig},
 		}
 
 		for _, test := range testTable {
@@ -114,7 +113,7 @@ func TestResponse(t *testing.T) {
 	t.Run("Bytes", func(t *testing.T) {
 		t.Parallel()
 		b := blake2b.Sum256([]byte("foo"))
-		r := NewResponse(time.Now(), b, nil, nil)
+		r := NewResponse(time.Now(), b, [32]byte{}, [64]byte{})
 		if !bytes.Equal(r.internal[:], r.Bytes()) {
 			t.Errorf("expected:\t%x\nresult:\t%x\n", b, r.Bytes())
 		}
@@ -124,7 +123,7 @@ func TestResponse(t *testing.T) {
 
 		expected := time.Now()
 		b := blake2b.Sum256([]byte("foo"))
-		r := NewResponse(expected, b, nil, nil)
+		r := NewResponse(expected, b, [32]byte{}, [64]byte{})
 
 		if r.Timestamp().Unix() != expected.Unix() {
 			t.Errorf("expected:\t%v\nresult:\t%v\n", expected, r.Timestamp())
@@ -147,7 +146,7 @@ func BenchmarkNewResponseBothKeys(b *testing.B) {
 	now := time.Now()
 
 	for n := 0; n < b.N; n++ {
-		NewResponse(now, h, &preshared, &priv)
+		NewResponse(now, h, preshared, priv)
 	}
 }
 
@@ -156,16 +155,18 @@ func BenchmarkNewResponseNoKeys(b *testing.B) {
 	n, _ := needle.New(p)
 	h := n.Hash()
 	now := time.Now()
+	var pk [64]byte
+	var psk [32]byte
 
 	for n := 0; n < b.N; n++ {
-		NewResponse(now, h, nil, nil)
+		NewResponse(now, h, psk, pk)
 	}
 }
 
 func BenchmarkResponseBytes(b *testing.B) {
 	p, _ := hex.DecodeString("40e4350b03d8b0c9e340321210b259d9a20b19632929b4a219254a4269c11f820c75168c6a91d309f4b134a7d715a5ac408991e1cf9415995053cf8a4e185dae22a06617ac51ebf7d232bc49e567f90be4db815c2b88ca0d9a4ef7a5119c0e592c88dfb96706e6510fb8a657c0f70f6695ea310d24786e6d980e9b33cf2665342b965b2391f6bb982c4c5f6058b9cba58038d32452e07cdee9420a8bd7f514e1")
 	n, _ := needle.New(p)
-	r := NewResponse(time.Now(), n.Hash(), nil, nil)
+	r := NewResponse(time.Now(), n.Hash(), [32]byte{}, [64]byte{})
 	for n := 0; n < b.N; n++ {
 		r.Bytes()
 	}

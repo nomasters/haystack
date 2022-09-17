@@ -3,7 +3,6 @@ package server
 import (
 	"crypto/subtle"
 	"encoding/binary"
-	"math/rand"
 	"time"
 
 	"github.com/nomasters/haystack/errors"
@@ -39,21 +38,12 @@ type Response struct{ internal [ResponseLength]byte }
 // if the presharedKey is present, the blake2b uses this key to make the hash a mac so that the client and server
 // must use this key to properly validate the response. If the privateKey is not nil, it uses NaCl Sign for the payload
 // the client must use the public key to verify the signature.
-func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey *[32]byte, privateKey *[64]byte) Response {
-	var r Response
-
+func NewResponse(timestamp time.Time, needleHash needle.Hash, presharedKey [32]byte, privateKey [64]byte) (r Response) {
 	copy(r.internal[:hashLen], needleHash[:])
 	copy(r.internal[hashLen:messageLen], timeToBytes(timestamp))
-
-	if privateKey != nil {
-		copy(r.internal[messageLen:headerLen], sign.Sign(nil, r.internal[:messageLen], privateKey))
-	} else {
-		rand.Read(r.internal[messageLen:headerLen])
-	}
-
+	copy(r.internal[messageLen:headerLen], sign.Sign(nil, r.internal[:messageLen], &privateKey))
 	copy(r.internal[headerLen:], mac(r.internal[:headerLen], presharedKey))
-
-	return r
+	return
 }
 
 // Hash returns the needle Hash from the response
@@ -104,7 +94,7 @@ func (r Response) Timestamp() time.Time {
 
 // Validate takes a hash and optionally a pubkey and presharedKey to validate the Response message.
 // If no error is found, it returns nil.
-func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, presharedKey *[32]byte) error {
+func (r Response) Validate(needleHash needle.Hash, publicKey *[32]byte, presharedKey [32]byte) error {
 	if subtle.ConstantTimeCompare(r.HashBytes(), needleHash[:]) == 0 {
 		return ErrInvalidHash
 	}
@@ -143,12 +133,8 @@ func bytesToTime(b []byte) time.Time {
 	return time.Unix(t, 0)
 }
 
-func mac(m []byte, psk *[32]byte) (h []byte) {
-	if psk != nil {
-		mac, _ := blake2b.New256(psk[:])
-		mac.Write(m)
-		return mac.Sum(nil)
-	}
-	b := blake2b.Sum256(m)
-	return b[:]
+func mac(m []byte, psk [32]byte) (h []byte) {
+	mac, _ := blake2b.New256(psk[:])
+	mac.Write(m)
+	return mac.Sum(nil)
 }

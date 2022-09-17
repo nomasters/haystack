@@ -62,7 +62,7 @@ func (c *Client) Set(n *needle.Needle) error {
 		return ErrTimestampExceedsThreshold
 	}
 
-	return r.Validate(n.Hash(), c.pubkey, c.preshared)
+	return r.Validate(n.Hash(), c.pubkey, *c.preshared)
 }
 
 // validTimestamp takes the current time, response claimed time, and acceptable threshold for time drift
