@@ -133,7 +133,7 @@ func bytesToTime(b []byte) time.Time {
 	return time.Unix(t, 0)
 }
 
-func mac(m []byte, psk [32]byte) (h []byte) {
+func mac(m []byte, psk [32]byte) []byte {
 	mac, _ := blake2b.New256(psk[:])
 	mac.Write(m)
 	return mac.Sum(nil)

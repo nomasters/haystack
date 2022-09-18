@@ -68,6 +68,14 @@ func WithTTL(ttl uint64) Option {
 	}
 }
 
+// WithPresharedKey takes a [32]byte and sets the server presharedKey
+func WithPresharedKey(psk [32]byte) Option {
+	return func(svr *server) error {
+		svr.presharedKey = psk
+		return nil
+	}
+}
+
 // ListenAndServe initiates and runs the haystack server and returns an error.
 func ListenAndServe(address string, opts ...Option) error {
 	if address == "" {
