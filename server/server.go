@@ -76,6 +76,14 @@ func WithPresharedKey(psk [32]byte) Option {
 	}
 }
 
+// WithPrivateKey takes a 64 byte ed25519 private key and sets the server privateKey
+func WithPrivateKey(privKey [64]byte) Option {
+	return func(svr *server) error {
+		svr.privateKey = privKey
+		return nil
+	}
+}
+
 // ListenAndServe initiates and runs the haystack server and returns an error.
 func ListenAndServe(address string, opts ...Option) error {
 	if address == "" {
