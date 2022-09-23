@@ -7,9 +7,7 @@ import (
 )
 
 func main() {
-	opts := []server.Option{
-		server.WithTTL(60 * 60 * 24),
-	}
+	opts := []server.Option{}
 
 	if err := server.ListenAndServe(":1337", opts...); err != nil {
 		fmt.Println(err)

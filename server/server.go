@@ -36,7 +36,6 @@ import (
 // server is a struct that contains all the settings required for a haystack server
 type server struct {
 	address      string
-	ttl          uint64
 	protocol     string
 	storage      storage.GetSetCloser
 	workers      int
@@ -56,17 +55,8 @@ type Option func(*server) error
 
 const (
 	defaultAddress  = ":1337"
-	defaultTTL      = 60 * 60 * 24
 	defaultProtocol = "udp"
 )
-
-// WithTTL takes a uint64 and sets the server ttl
-func WithTTL(ttl uint64) Option {
-	return func(svr *server) error {
-		svr.ttl = ttl
-		return nil
-	}
-}
 
 // WithPresharedKey takes a [32]byte and sets the server presharedKey
 func WithPresharedKey(psk [32]byte) Option {
@@ -84,17 +74,33 @@ func WithPrivateKey(privKey [64]byte) Option {
 	}
 }
 
+// WithStorage allows setting a storage.GetSetCloser in the server runtime
+func WithStorage(s storage.GetSetCloser) Option {
+	return func(svr *server) error {
+		svr.storage = s
+		return nil
+	}
+}
+
+// WithContext takes context.Context and passes it to the server struct
+func WithContext(ctx context.Context) Option {
+	return func(svr *server) error {
+		svr.ctx = ctx
+		return nil
+	}
+}
+
 // ListenAndServe initiates and runs the haystack server and returns an error.
 func ListenAndServe(address string, opts ...Option) error {
 	if address == "" {
 		address = defaultAddress
 	}
+
 	s := server{
 		address:     address,
-		ttl:         defaultTTL,
 		protocol:    defaultProtocol,
 		workers:     runtime.NumCPU(),
-		storage:     memory.New(10*time.Second, 2000),
+		storage:     memory.New(storage.DefaultTTL, 2000000),
 		ctx:         context.Background(),
 		gracePeriod: 2 * time.Second,
 	}
