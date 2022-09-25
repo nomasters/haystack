@@ -38,7 +38,7 @@ type server struct {
 	address      string
 	protocol     string
 	storage      storage.GetSetCloser
-	workers      int
+	workers      uint64
 	ctx          context.Context
 	gracePeriod  time.Duration
 	presharedKey [32]byte
@@ -86,6 +86,14 @@ func WithStorage(s storage.GetSetCloser) Option {
 func WithContext(ctx context.Context) Option {
 	return func(svr *server) error {
 		svr.ctx = ctx
+		return nil
+	}
+}
+
+// WithWorkers takes count of uint64 and passes it to the server struct
+func WithWorkers(count uint64) Option {
+	return func(svr *server) error {
+		svr.workers = count
 		return nil
 	}
 }
