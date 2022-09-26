@@ -107,7 +107,7 @@ func ListenAndServe(address string, opts ...Option) error {
 	s := server{
 		address:     address,
 		protocol:    defaultProtocol,
-		workers:     runtime.NumCPU(),
+		workers:     uint64(runtime.NumCPU()),
 		storage:     memory.New(storage.DefaultTTL, 2000000),
 		ctx:         context.Background(),
 		gracePeriod: 2 * time.Second,
@@ -137,7 +137,7 @@ func ListenAndServe(address string, opts ...Option) error {
 
 	doneChan := make(chan struct{}, s.workers)
 
-	for i := 0; i < s.workers; i++ {
+	for i := 0; i < int(s.workers); i++ {
 		go s.newWorker(ctx, conn, reqChan, doneChan)
 	}
 
@@ -174,7 +174,7 @@ func (s *server) shutdown(cancel context.CancelFunc, done <-chan struct{}) error
 		}
 	}()
 
-	for i := 0; i < s.workers; i++ {
+	for i := 0; i < int(s.workers); i++ {
 		<-done
 	}
 	if err := s.storage.Close(); err != nil {
