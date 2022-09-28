@@ -90,8 +90,12 @@ func WithContext(ctx context.Context) Option {
 	}
 }
 
-// WithWorkers takes count of uint64 and passes it to the server struct
-func WithWorkers(count uint64) Option {
+// WithWorkerCount takes count of uint64 and passes it to the server struct
+// if worker count is set to zero, workers are set to runtime.NumCPU()
+func WithWorkerCount(count uint64) Option {
+	if count == 0 {
+		count = uint64(runtime.NumCPU())
+	}
 	return func(svr *server) error {
 		svr.workers = count
 		return nil
