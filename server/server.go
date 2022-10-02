@@ -54,8 +54,10 @@ type request struct {
 type Option func(*server) error
 
 const (
-	defaultAddress  = ":1337"
-	defaultProtocol = "udp"
+	defaultAddress     = ":1337"
+	defaultProtocol    = "udp"
+	defaultGracePeriod = 2 * time.Second
+	minGracePeriod     = 0 * time.Millisecond
 )
 
 // WithPresharedKey takes a [32]byte and sets the server presharedKey
@@ -63,6 +65,19 @@ func WithPresharedKey(psk [32]byte) Option {
 	return func(svr *server) error {
 		svr.presharedKey = psk
 		return nil
+	}
+}
+
+// NOTE: this might actually need to move to the cmd. it seems more like a runtime implementation detail
+
+// WithGracePeriod allows you to set the gracePeriod
+func WithShutdownGracePeriod(duration time.Duration) Option {
+	if duration <= minGracePeriod {
+		duration = defaultGracePeriod
+	}
+
+	return func(svr *server) error {
+		svr.gracePeriod = duration
 	}
 }
 
@@ -114,7 +129,7 @@ func ListenAndServe(address string, opts ...Option) error {
 		workers:     uint64(runtime.NumCPU()),
 		storage:     memory.New(storage.DefaultTTL, 2000000),
 		ctx:         context.Background(),
-		gracePeriod: 2 * time.Second,
+		gracePeriod: def,
 	}
 
 	for _, opt := range opts {
