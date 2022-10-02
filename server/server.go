@@ -70,7 +70,7 @@ func WithPresharedKey(psk [32]byte) Option {
 
 // NOTE: this might actually need to move to the cmd. it seems more like a runtime implementation detail
 
-// WithGracePeriod allows you to set the gracePeriod
+// WithShutdownGracePeriod allows you to set the gracePeriod
 func WithShutdownGracePeriod(duration time.Duration) Option {
 	if duration <= minGracePeriod {
 		duration = defaultGracePeriod
@@ -78,7 +78,9 @@ func WithShutdownGracePeriod(duration time.Duration) Option {
 
 	return func(svr *server) error {
 		svr.gracePeriod = duration
+		return nil
 	}
+
 }
 
 // WithPrivateKey takes a 64 byte ed25519 private key and sets the server privateKey
