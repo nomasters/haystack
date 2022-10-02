@@ -131,7 +131,7 @@ func ListenAndServe(address string, opts ...Option) error {
 		workers:     uint64(runtime.NumCPU()),
 		storage:     memory.New(storage.DefaultTTL, 2000000),
 		ctx:         context.Background(),
-		gracePeriod: def,
+		gracePeriod: defaultGracePeriod,
 	}
 
 	for _, opt := range opts {
