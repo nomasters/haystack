@@ -69,6 +69,8 @@ func WithPresharedKey(psk [32]byte) Option {
 }
 
 // NOTE: this might actually need to move to the cmd. it seems more like a runtime implementation detail
+// UPDATE: this should, in fact, be part of the CMD implementation, it should not be opinionated in the server itself
+// so that others can use it as they see fit.
 
 // WithShutdownGracePeriod allows you to set the gracePeriod
 func WithShutdownGracePeriod(duration time.Duration) Option {
