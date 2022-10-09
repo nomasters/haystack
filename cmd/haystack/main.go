@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"github.com/nomasters/haystack/cmd"
 )
 
 // TODO: use this as a way to run haystack client and haystack server
@@ -9,5 +9,5 @@ import (
 // be able to have the CLI test send/receive of messages
 
 func main() {
-	fmt.Println("hello, world")
+	cmd.Execute()
 }
