@@ -1,4 +1,4 @@
-.PHONEY: coverage test inspect
+.PHONEY: coverage test inspect install 
 
 test:
 	go test -v ./...
@@ -11,3 +11,6 @@ inspect: coverage
 
 update-deps:
 	go get -u && go mod tidy
+
+install:
+	go install github.com/nomasters/haystack/cmd/haystack
