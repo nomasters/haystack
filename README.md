@@ -36,4 +36,4 @@ If the client and server do not have a preshared key, the response is a simple m
 S(MAC||timestamp)||MAC(submitted_hash||timestamp)||timestamp
 
 If a preshared key is present, the response is
-S(HMAC||timestamp)||HMAC(preshared_key||submitted_hash||timestamp)||timestamp
+submitted_hash||timestamp||blake2_256_mac(submitted_hash||timestamp)||nacl_sign(submitted_hash||timestamp||blake2_256_mac)
