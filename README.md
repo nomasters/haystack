@@ -1,6 +1,6 @@
 # haystack
 
-a simple and ephemeral content addressed key/value store.
+a simple and ephemeral content addressed key/value store udp client and server
 
 Design goals:
 - no auth, the submitter declares the hash of the content and submits the content. if the hash of the content on the server matches the submitted hash, the content is accepted and any requestor with the hash can request the content
