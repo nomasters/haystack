@@ -2,8 +2,6 @@ package needle
 
 import (
 	"crypto/subtle"
-	"fmt"
-	"math"
 
 	"github.com/nomasters/haystack/errors"
 	"golang.org/x/crypto/blake2b"
@@ -20,12 +18,8 @@ const (
 	HashLength = len(Hash{})
 	// PayloadLength is the length of the remaining bytes of the message.
 	PayloadLength = len(Payload{})
-	// payloadLengthFloat is a pre-converted length of type float64 for the entropy calculation
-	payloadLengthFloat = float64(PayloadLength)
 	// NeedleLength is the number of bytes required for a valid needle.
 	NeedleLength = HashLength + PayloadLength
-	// EntropyThreshold is the minimum threshold of the payload's entropy allowed by the Needle validator
-	EntropyThreshold = 0.80
 	// ErrorDNE is returned when a key/value par does not exist
 	ErrorDNE = errors.Error("Does Not Exist")
 	// ErrorInvalidHash is an error for in invalid hash
@@ -94,11 +88,6 @@ func (n Needle) Bytes() []byte {
 	return n.internal[:]
 }
 
-// Entropy is the Shannon Entropy score for the message payload.
-func (n Needle) Entropy() float64 {
-	return entropy(n.Payload())
-}
-
 // validate checks that a Needle has a valid hash and that it meets the entropy
 // threshold, it returns either nil or an error.
 func (n *Needle) validate() error {
@@ -107,25 +96,5 @@ func (n *Needle) validate() error {
 	if hash := blake2b.Sum256(p[:]); subtle.ConstantTimeCompare(h[:], hash[:]) == 0 {
 		return ErrorInvalidHash
 	}
-	if score := n.Entropy(); score < EntropyThreshold {
-		return fmt.Errorf("entropy score: %v, expected score > %v", score, EntropyThreshold)
-	}
 	return nil
-}
-
-// entropy runs Shannon's entropy algorithm
-// and returns a float64 score between 0 and 1
-func entropy(p Payload) float64 {
-	var entropy float64
-	var freqArray [256]uint8
-	for i := 0; i < PayloadLength; i++ {
-		freqArray[p[i]]++
-	}
-	for i := 0; i < 256; i++ {
-		if freqArray[i] != 0 {
-			freq := float64(freqArray[i]) / payloadLengthFloat
-			entropy += freq * math.Log2(freq)
-		}
-	}
-	return -entropy / 8
 }
