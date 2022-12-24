@@ -31,6 +31,8 @@ import (
 // in a cli implementation and keep this library simple
 // - think about how to abstract the read/write to accommodate both packet types
 
+// all of this will move to CMD
+
 // what logging do I want? I'm guessing it should be configurable
 
 // server is a struct that contains all the settings required for a haystack server
