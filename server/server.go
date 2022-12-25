@@ -32,6 +32,11 @@ import (
 // - think about how to abstract the read/write to accommodate both packet types
 
 // all of this will move to CMD
+// the idea here is that I should use inversion of control on the server
+// and the logging and configs should all be configurable at the cmd level
+// This means I need a design spike on ergonomics of initializing the server
+// and running it as a CLI command + CLI switches, config file design, etc.
+// the end goal here is to make it trivial to dockerize or throw in a process monitor.
 
 // what logging do I want? I'm guessing it should be configurable
 
