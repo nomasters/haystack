@@ -40,6 +40,17 @@ import (
 
 // what logging do I want? I'm guessing it should be configurable
 
+// wild idea. maybe? What if haystack had no idea of time? What if you simply submitted one
+// of two payloads, a read or a write request, and it either confirmed a read with the response
+// or the write with a response, and any other interaction was handled upstream.
+// This allows for two modes: response mode and silent mode
+// response mode does a direct response to the sender, but silent mode accepts the message
+// but does nothing with it. This could be interesting in that a silent mode could be sent to multiple endpoints
+// with no information change, and you could "request" a read from a server "peer" disconnected
+// this also promotes the use of wireguard for network encryption and auth in an interesting way.
+// again more thoughts need to go into this, but it could be simple and straight forward. I'm going
+// to think about this more.
+
 // server is a struct that contains all the settings required for a haystack server
 type server struct {
 	address      string
