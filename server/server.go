@@ -40,16 +40,18 @@ import (
 
 // what logging do I want? I'm guessing it should be configurable
 
-// wild idea. maybe? What if haystack had no idea of time? What if you simply submitted one
-// of two payloads, a read or a write request, and it either confirmed a read with the response
-// or the write with a response, and any other interaction was handled upstream.
-// This allows for two modes: response mode and silent mode
-// response mode does a direct response to the sender, but silent mode accepts the message
-// but does nothing with it. This could be interesting in that a silent mode could be sent to multiple endpoints
-// with no information change, and you could "request" a read from a server "peer" disconnected
-// this also promotes the use of wireguard for network encryption and auth in an interesting way.
-// again more thoughts need to go into this, but it could be simple and straight forward. I'm going
-// to think about this more.
+// radical simplicity: Greatly simplify the server.
+// it accepts needle bytes, this is a write request
+// it accepts a needle hash bytes, this is a read request, it responds with needle bytes
+// that's it. No response on successful writes. The idea behind this is to be as light weight as possible
+// - but what about MITM drops on interception? This is a network layer problem that should be dealt with
+// -- Ideally if this goes over the public internet, you combine this with something else, wireguard, or some other tools
+// -- if you run this on a dead drop you are fine, you are communicating pretty directly with the server
+// -- the client _can_ check that the server has the message, it just follows up with a read request. This obviously
+//    adds a third network transmission (client send write, client send read, server send response), but this gives the
+//    client more control. Let's say we have two haystack servers running as replicas. The client could send a write to
+//    one server and then send a read request to another. This would allow the client to verify that both the write
+//    and the replication are working.
 
 // server is a struct that contains all the settings required for a haystack server
 type server struct {
