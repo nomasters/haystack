@@ -39,10 +39,7 @@ func main() {
 		go worker(taskChan, client)
 	}
 
-	// TODO: work out "oh no: (h)mac failed validation" issue
-	// this seems to be possibly related to race conditions on ports?
-
-	reqCount := 5
+	reqCount := 5000
 	randReq := make([][]byte, reqCount)
 
 	for i := 0; i < reqCount; i++ {

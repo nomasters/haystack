@@ -55,14 +55,12 @@ import (
 
 // server is a struct that contains all the settings required for a haystack server
 type server struct {
-	address      string
-	protocol     string
-	storage      storage.GetSetCloser
-	workers      uint64
-	ctx          context.Context
-	gracePeriod  time.Duration
-	presharedKey [32]byte
-	privateKey   [64]byte
+	address     string
+	protocol    string
+	storage     storage.GetSetCloser
+	workers     uint64
+	ctx         context.Context
+	gracePeriod time.Duration
 }
 
 type request struct {
@@ -80,14 +78,6 @@ const (
 	minGracePeriod     = 0 * time.Millisecond
 )
 
-// WithPresharedKey takes a [32]byte and sets the server presharedKey
-func WithPresharedKey(psk [32]byte) Option {
-	return func(svr *server) error {
-		svr.presharedKey = psk
-		return nil
-	}
-}
-
 // NOTE: this might actually need to move to the cmd. it seems more like a runtime implementation detail
 // UPDATE: this should, in fact, be part of the CMD implementation, it should not be opinionated in the server itself
 // so that others can use it as they see fit.
@@ -103,14 +93,6 @@ func WithShutdownGracePeriod(duration time.Duration) Option {
 		return nil
 	}
 
-}
-
-// WithPrivateKey takes a 64 byte ed25519 private key and sets the server privateKey
-func WithPrivateKey(privKey [64]byte) Option {
-	return func(svr *server) error {
-		svr.privateKey = privKey
-		return nil
-	}
 }
 
 // WithStorage allows setting a storage.GetSetCloser in the server runtime
@@ -196,7 +178,6 @@ func newListener(conn net.PacketConn, reqChan chan<- *request) {
 		if err != nil {
 			log.Printf("read error: %v", err)
 		}
-
 		if n == needle.NeedleLength || n == needle.HashLength {
 			reqChan <- &request{body: buffer[:n], addr: radder}
 		} else {
@@ -268,9 +249,5 @@ func (s *server) handleNeedle(conn net.PacketConn, r *request) error {
 	if err := s.storage.Set(n); err != nil {
 		return err
 	}
-
-	t := time.Now()
-	resp := NewResponse(t, n.Hash(), s.presharedKey, s.privateKey)
-	_, err = conn.WriteTo(resp.Bytes(), r.addr)
 	return err
 }

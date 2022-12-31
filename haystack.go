@@ -3,18 +3,15 @@ package haystack
 import (
 	"bufio"
 	"net"
-	"time"
 
 	"github.com/nomasters/haystack/errors"
 	"github.com/nomasters/haystack/needle"
-	"github.com/nomasters/haystack/server"
 )
 
-const (
-	// DefaultThreshold is the default time threshold
-	// for a server response
-	DefaultThreshold = time.Duration(3 * time.Second)
-)
+// some more thought needs to go into this, we most likely need:
+// - a connection pool, this connection pool should "self heal", allow for timeouts, and support the pooling feature to be well behaved
+// - logger primitives, this most likely needs to carry over from server implementation
+// - a way to process responses in a scalable way. This might be best to keep a local storage buffer keyed by the hash. more thought needs to go into this.
 
 const (
 	// ErrTimestampExceedsThreshold is an error returned with the timestamp exceeds the acceptable threshold
@@ -29,50 +26,23 @@ type option func(*options)
 // Client represents a haystack client with a UDP connection
 type Client struct {
 	raddr string
-	// conn      net.Conn
-	pubkey    *[32]byte
-	preshared *[32]byte
-	threshold time.Duration
+	conn  net.Conn
 }
 
-// // Close implements the UDPConn.Close() method
-// func (c *Client) Close() error {
-// 	return c.conn.Close()
-// }
+// Close implements the UDPConn.Close() method
+func (c *Client) Close() error {
+	return c.conn.Close()
+}
 
 // Set takes a needle and returns
 func (c *Client) Set(n *needle.Needle) error {
-	p := make([]byte, server.ResponseLength)
 	conn, err := net.Dial("udp", c.raddr)
 	if err != nil {
 		return err
 	}
 	defer conn.Close()
-	if _, err := conn.Write(n.Bytes()); err != nil {
-		return err
-	}
-
-	l, err := bufio.NewReader(conn).Read(p)
-	if err != nil {
-		return err
-	}
-	r, err := server.ResponseFromBytes(p[:l])
-
-	if !validTimestamp(time.Now(), r.Timestamp(), c.threshold) {
-		return ErrTimestampExceedsThreshold
-	}
-
-	return r.Validate(n.Hash(), c.pubkey, *c.preshared)
-}
-
-// validTimestamp takes the current time, response claimed time, and acceptable threshold for time drift
-// and returns a boolean. Drift is calculated in absolute terms.
-func validTimestamp(now, claim time.Time, threshold time.Duration) bool {
-	drift := now.Sub(claim)
-	if drift < 0 {
-		drift = -drift
-	}
-	return drift < threshold
+	_, err = conn.Write(n.Bytes())
+	return err
 }
 
 // Get takes a needle hash and returns a Needle
@@ -87,6 +57,8 @@ func (c *Client) Get(h *needle.Hash) (*needle.Needle, error) {
 	if _, err := bufio.NewReader(conn).Read(p); err != nil {
 		return nil, err
 	}
+	// TODO: Because this is connectionless, we should create a readbuffer for conn that writes to client storage interface
+	// and then read from that client storage interface. This will make reading async calls that go really fast... faster.
 	return needle.FromBytes(p)
 }
 
@@ -95,11 +67,10 @@ func (c *Client) Get(h *needle.Hash) (*needle.Needle, error) {
 func NewClient(address string, opts ...option) (*Client, error) {
 	c := new(Client)
 	c.raddr = address
-	c.threshold = DefaultThreshold
-	// conn, err := net.Dial("udp", address)
-	// if err != nil {
-	// 	return c, err
-	// }
-	// c.conn = conn
+	conn, err := net.Dial("udp", address)
+	if err != nil {
+		return c, err
+	}
+	c.conn = conn
 	return c, nil
 }
