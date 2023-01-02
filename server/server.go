@@ -39,19 +39,11 @@ import (
 // the end goal here is to make it trivial to dockerize or throw in a process monitor.
 
 // what logging do I want? I'm guessing it should be configurable
-
-// radical simplicity: Greatly simplify the server.
-// it accepts needle bytes, this is a write request
-// it accepts a needle hash bytes, this is a read request, it responds with needle bytes
-// that's it. No response on successful writes. The idea behind this is to be as light weight as possible
-// - but what about MITM drops on interception? This is a network layer problem that should be dealt with
-// -- Ideally if this goes over the public internet, you combine this with something else, wireguard, or some other tools
-// -- if you run this on a dead drop you are fine, you are communicating pretty directly with the server
-// -- the client _can_ check that the server has the message, it just follows up with a read request. This obviously
-//    adds a third network transmission (client send write, client send read, server send response), but this gives the
-//    client more control. Let's say we have two haystack servers running as replicas. The client could send a write to
-//    one server and then send a read request to another. This would allow the client to verify that both the write
-//    and the replication are working.
+// new considerations to have:
+// - max open request limit - this should be guided by the storage backend, most likely, I need to think about how transparent
+//   this is to the end user
+// - how do we want to build in IOC for logging? What log levels are supported?
+// - what gest moved to the CLI
 
 // server is a struct that contains all the settings required for a haystack server
 type server struct {
