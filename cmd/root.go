@@ -10,7 +10,8 @@ import (
 var rootCmd = &cobra.Command{
 	Use:   "haystack",
 	Short: "Haystack is an ephemeral key value store",
-	Long:  `Haystack is an ephemeral key value store`,
+	Long: `Haystack is an ephemeral key value store. This tool is used to run 
+in either server or client mode.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("hello world")
 	},
