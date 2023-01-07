@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/nomasters/haystack/logger"
 	"github.com/nomasters/haystack/needle"
 	"github.com/nomasters/haystack/storage"
 	"github.com/nomasters/haystack/storage/memory"
@@ -53,6 +54,7 @@ type server struct {
 	workers     uint64
 	ctx         context.Context
 	gracePeriod time.Duration
+	logger      logger.Logger
 }
 
 type request struct {
@@ -128,6 +130,7 @@ func ListenAndServe(address string, opts ...Option) error {
 		storage:     memory.New(storage.DefaultTTL, 2000000),
 		ctx:         context.Background(),
 		gracePeriod: defaultGracePeriod,
+		logger:      logger.New(),
 	}
 
 	for _, opt := range opts {
@@ -185,8 +188,7 @@ func (s *server) shutdown(cancel context.CancelFunc, done <-chan struct{}) error
 		// todo: set this to something longer?
 		time.Sleep(s.gracePeriod)
 		if !complete {
-			log.Println("failed to gracefully exit")
-			os.Exit(1)
+			s.logger.Fatal("failed to gracefully exit")
 		}
 	}()
 
@@ -197,7 +199,7 @@ func (s *server) shutdown(cancel context.CancelFunc, done <-chan struct{}) error
 		return err
 	}
 	complete = true
-	log.Println("graceful exit")
+	s.logger.Info("graceful exit")
 	return nil
 }
 
