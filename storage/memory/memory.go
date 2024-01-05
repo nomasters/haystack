@@ -79,16 +79,18 @@ func New(ttl time.Duration, maxItems int) *Store {
 
 	go func(s *Store) {
 		for {
-			task := <-s.cleanups
-			for {
-				if (len(s.cleanups) > s.maxItems) || (task.expiration.Before(time.Now())) {
-					s.Lock()
-					v := s.internal[task.hash]
-					if v.expiration.Equal(task.expiration) {
-						delete(s.internal, task.hash)
+			select {
+			case task := <-s.cleanups:
+				for {
+					if (len(s.cleanups) > s.maxItems) || (task.expiration.Before(time.Now())) {
+						s.Lock()
+						v := s.internal[task.hash]
+						if v.expiration.Equal(task.expiration) {
+							delete(s.internal, task.hash)
+						}
+						s.Unlock()
+						break
 					}
-					s.Unlock()
-					break
 				}
 			}
 		}
