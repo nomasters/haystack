@@ -12,6 +12,8 @@ const (
 	DefaultTTL = 24 * time.Hour
 	// ErrorNeedleIsNil is used when the Set method receives a nil pointer
 	ErrorNeedleIsNil = errors.Error("Cannot Set a nil *Needle")
+	// ErrorStoreFull is used when the Set method receives a nil pointer
+	ErrorStoreFull = errors.Error("Store is full")
 )
 
 // Getter takes a needle.Hash and returns a reference to needle.Needle and an error.

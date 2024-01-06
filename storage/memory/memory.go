@@ -1,15 +1,12 @@
 package memory
 
 import (
+	"context"
 	"sync"
 	"time"
 
 	"github.com/nomasters/haystack/needle"
 	"github.com/nomasters/haystack/storage"
-)
-
-const (
-	headroom = 2
 )
 
 type value struct {
@@ -29,6 +26,7 @@ type Store struct {
 	ttl      time.Duration
 	cleanups chan cleanup
 	maxItems int
+	ctx      context.Context
 }
 
 // Set takes a needle and writes it to the memory store.
@@ -36,19 +34,29 @@ func (s *Store) Set(n *needle.Needle) error {
 	if n == nil {
 		return storage.ErrorNeedleIsNil
 	}
-	hash := n.Hash()
-	payload := n.Payload()
-	expiration := time.Now().Add(s.ttl)
 	s.Lock()
+	if len(s.internal) > s.maxItems {
+		s.Unlock()
+		return storage.ErrorStoreFull
+	}
+	hash := n.Hash()
+	expiration := time.Now().Add(s.ttl)
 	s.internal[hash] = value{
-		payload:    payload,
+		payload:    n.Payload(),
 		expiration: expiration,
 	}
 	s.Unlock()
-	s.cleanups <- cleanup{
-		hash:       hash,
-		expiration: expiration,
-	}
+
+	go func() {
+		childCTX := context.WithoutCancel(s.ctx)
+		select {
+		case <-childCTX.Done():
+			return
+		case <-time.After(s.ttl):
+			s.cleanups <- cleanup{hash: hash, expiration: expiration}
+		}
+	}()
+
 	return nil
 }
 
@@ -60,41 +68,44 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 	if !ok {
 		return nil, needle.ErrorDNE
 	}
-	// TODO: this should be FromBytes, not New
-	return needle.New(v.payload[:])
+	b := append(hash[:], v.payload[:]...)
+	return needle.FromBytes(b)
 }
 
 // Close is meant to conform to the GetSetCloser interface.
 // TODO: put a proper cleanup step here
 func (s *Store) Close() error { return nil }
 
+// todo: a better way to do this would be to not allow new items to be
+// added to the store if it is full
+// and we can use a return channel to signal a delete
+// this would allow us to not have to do a cleanup on every set
+
 // New returns a pointer to a Store
-func New(ttl time.Duration, maxItems int) *Store {
+func New(ctx context.Context, ttl time.Duration, maxItems int) *Store {
 	s := Store{
 		internal: make(map[needle.Hash]value),
 		ttl:      ttl,
 		maxItems: maxItems,
+		ctx:      ctx,
 	}
-	s.cleanups = make(chan cleanup, s.maxItems*headroom)
+	s.cleanups = make(chan cleanup, s.maxItems)
 
-	go func(s *Store) {
+	go func() {
 		for {
 			select {
+			case <-s.ctx.Done():
+				return
 			case task := <-s.cleanups:
-				for {
-					if (len(s.cleanups) > s.maxItems) || (task.expiration.Before(time.Now())) {
-						s.Lock()
-						v := s.internal[task.hash]
-						if v.expiration.Equal(task.expiration) {
-							delete(s.internal, task.hash)
-						}
-						s.Unlock()
-						break
-					}
+				s.Lock()
+				v := s.internal[task.hash]
+				if v.expiration.Equal(task.expiration) {
+					delete(s.internal, task.hash)
 				}
+				s.Unlock()
 			}
 		}
-	}(&s)
+	}()
 
 	return &s
 }
