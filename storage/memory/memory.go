@@ -27,6 +27,7 @@ type Store struct {
 	cleanups chan cleanup
 	maxItems int
 	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 // Set takes a needle and writes it to the memory store.
@@ -48,9 +49,8 @@ func (s *Store) Set(n *needle.Needle) error {
 	s.Unlock()
 
 	go func() {
-		childCTX := context.WithoutCancel(s.ctx)
 		select {
-		case <-childCTX.Done():
+		case <-s.ctx.Done():
 			return
 		case <-time.After(s.ttl):
 			s.cleanups <- cleanup{hash: hash, expiration: expiration}
@@ -73,23 +73,23 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 }
 
 // Close is meant to conform to the GetSetCloser interface.
-// TODO: put a proper cleanup step here
-func (s *Store) Close() error { return nil }
-
-// todo: a better way to do this would be to not allow new items to be
-// added to the store if it is full
-// and we can use a return channel to signal a delete
-// this would allow us to not have to do a cleanup on every set
+func (s *Store) Close() error {
+	s.cancel()
+	return nil
+}
 
 // New returns a pointer to a Store
 func New(ctx context.Context, ttl time.Duration, maxItems int) *Store {
+	sctx, cancel := context.WithCancel(ctx)
+
 	s := Store{
 		internal: make(map[needle.Hash]value),
 		ttl:      ttl,
 		maxItems: maxItems,
-		ctx:      ctx,
+		ctx:      sctx,
+		cancel:   cancel,
+		cleanups: make(chan cleanup, maxItems),
 	}
-	s.cleanups = make(chan cleanup, s.maxItems)
 
 	go func() {
 		for {

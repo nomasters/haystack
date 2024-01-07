@@ -123,11 +123,13 @@ func ListenAndServe(address string, opts ...Option) error {
 		address = defaultAddress
 	}
 
+	ctx := context.Background()
+
 	s := server{
 		address:     address,
 		protocol:    defaultProtocol,
 		workers:     uint64(runtime.NumCPU()),
-		storage:     memory.New(storage.DefaultTTL, 2000000),
+		storage:     memory.New(ctx, storage.DefaultTTL, 2000000),
 		ctx:         context.Background(),
 		gracePeriod: defaultGracePeriod,
 		logger:      logger.New(),
