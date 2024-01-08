@@ -39,7 +39,7 @@ func main() {
 		go worker(taskChan, client)
 	}
 
-	reqCount := 5000
+	reqCount := 10000
 	randReq := make([][]byte, reqCount)
 
 	for i := 0; i < reqCount; i++ {
