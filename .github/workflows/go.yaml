@@ -23,4 +23,6 @@ jobs:
       - name: Coverage
         run: make coverage
       - name: Codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         run: bash <(curl -s https://codecov.io/bash)
