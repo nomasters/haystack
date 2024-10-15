@@ -16,3 +16,5 @@
 
 coverage.txt
 .vscode
+
+.DS_Store

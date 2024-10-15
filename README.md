@@ -17,7 +17,7 @@ goals:
 
 ### Needle: the Haystack message
 
-A message in haystack is called a Needle. A needle includes a 32 bytes blake2b hash of a 160 byte payload.
+A message in haystack is called a Needle. A needle includes a 32 bytes blake3 hash of a 160 byte payload.
 All payloads are a fixed length. Both the client and server can verify the hash of the payload by verifying a 192 byte needle.
 
 ```
@@ -50,7 +50,7 @@ A 32 byte request is a read request. It implies that the requestor would like th
 
 #### Write Requests
 
-A write request my be 192 bytes. The server will verify that these bytes are a valid Needles (that the final 160 bytes blake2b hash match the first 32 bytes hash included in the payload). If this Needle is valid, it is stored. The server provides no response for this operation. If a client wants to confirm that a write was completed successfully, it should submit a read request to confirm.
+A write request my be 192 bytes. The server will verify that these bytes are a valid Needles (that the final 160 bytes blake3 hash match the first 32 bytes hash included in the payload). If this Needle is valid, it is stored. The server provides no response for this operation. If a client wants to confirm that a write was completed successfully, it should submit a read request to confirm.
 
 
 
