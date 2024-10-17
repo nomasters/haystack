@@ -2,9 +2,9 @@ package haystack
 
 import (
 	"bufio"
+	"errors"
 	"net"
 
-	"github.com/nomasters/haystack/errors"
 	"github.com/nomasters/haystack/needle"
 )
 
@@ -13,9 +13,9 @@ import (
 // - logger primitives, this most likely needs to carry over from server implementation
 // - a way to process responses in a scalable way. This might be best to keep a local storage buffer keyed by the hash. more thought needs to go into this.
 
-const (
+var (
 	// ErrTimestampExceedsThreshold is an error returned with the timestamp exceeds the acceptable threshold
-	ErrTimestampExceedsThreshold = errors.Error("Timestamp exceeds threshold")
+	ErrTimestampExceedsThreshold = errors.New("Timestamp exceeds threshold")
 )
 
 type options struct {

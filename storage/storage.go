@@ -1,19 +1,14 @@
 package storage
 
 import (
-	"time"
+	"errors"
 
-	"github.com/nomasters/haystack/errors"
 	"github.com/nomasters/haystack/needle"
 )
 
-const (
-	// DefaultTTL of 1 day
-	DefaultTTL = 24 * time.Hour
+var (
 	// ErrorNeedleIsNil is used when the Set method receives a nil pointer
-	ErrorNeedleIsNil = errors.Error("Cannot Set a nil *Needle")
-	// ErrorStoreFull is used when the Set method receives a nil pointer
-	ErrorStoreFull = errors.Error("Store is full")
+	ErrorNeedleIsNil = errors.New("Cannot Set a nil *Needle")
 )
 
 // Getter takes a needle.Hash and returns a reference to needle.Needle and an error.

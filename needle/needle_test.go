@@ -28,6 +28,11 @@ func TestNeedle(t *testing.T) {
 		if !bytes.Equal(p, payload[:]) {
 			t.Error("payload imported by New does not match needle.Payload()")
 		}
+		payload[0] = 0
+		pl := n.Payload()
+		if bytes.Equal(pl[:], payload[:]) {
+			t.Error("mutating Payload() changed needle payload")
+		}
 	})
 	t.Run("Hash", func(t *testing.T) {
 		t.Parallel()
@@ -37,6 +42,11 @@ func TestNeedle(t *testing.T) {
 		h := blake3.Sum256(p)
 		if !bytes.Equal(h[:], hash[:]) {
 			t.Error("exported hash is invalid")
+		}
+		hash[0] = 0
+		h2 := n.Hash()
+		if bytes.Equal(h2[:], hash[:]) {
+			t.Error("mutating Hash() changed needle hash")
 		}
 	})
 }
@@ -159,5 +169,38 @@ func BenchmarkValidate(b *testing.B) {
 	n1, _ := New(p)
 	for n := 0; n < b.N; n++ {
 		n1.validate()
+	}
+}
+
+func BenchmarkBytes(b *testing.B) {
+	p, _ := hex.DecodeString("40e4350b03d8b0c9e340321210b259d9a20b19632929b4a219254a4269c11f820c75168c6a91d309f4b134a7d715a5ac408991e1cf9415995053cf8a4e185dae22a06617ac51ebf7d232bc49e567f90be4db815c2b88ca0d9a4ef7a5119c0e592c88dfb96706e6510fb8a657c0f70f6695ea310d24786e6d980e9b33cf2665342b965b2391f6bb982c4c5f6058b9cba58038d32452e07cdee9420a8bd7f514e1")
+	n1, _ := New(p)
+	for n := 0; n < b.N; n++ {
+		n1.Bytes()
+	}
+}
+
+func BenchmarkHash(b *testing.B) {
+	p, _ := hex.DecodeString("40e4350b03d8b0c9e340321210b259d9a20b19632929b4a219254a4269c11f820c75168c6a91d309f4b134a7d715a5ac408991e1cf9415995053cf8a4e185dae22a06617ac51ebf7d232bc49e567f90be4db815c2b88ca0d9a4ef7a5119c0e592c88dfb96706e6510fb8a657c0f70f6695ea310d24786e6d980e9b33cf2665342b965b2391f6bb982c4c5f6058b9cba58038d32452e07cdee9420a8bd7f514e1")
+	n1, _ := New(p)
+	for n := 0; n < b.N; n++ {
+		n1.Hash()
+	}
+}
+
+func BenchmarkFromBytes(b *testing.B) {
+	validRaw, _ := hex.DecodeString("e431c3b024c54b8a8f03a1da5f81678300b3bf5d13fd3fb4969a6bfb85cdf1ae40e4350b03d8b0c9e340321210b259d9a20b19632929b4a219254a4269c11f820c75168c6a91d309f4b134a7d715a5ac408991e1cf9415995053cf8a4e185dae22a06617ac51ebf7d232bc49e567f90be4db815c2b88ca0d9a4ef7a5119c0e592c88dfb96706e6510fb8a657c0f70f6695ea310d24786e6d980e9b33cf2665342b965b2391f6bb982c4c5f6058b9cba58038d32452e07cdee9420a8bd7f514e1")
+	for n := 0; n < b.N; n++ {
+		FromBytes(validRaw)
+	}
+}
+
+func BenchmarkFullFlow(b *testing.B) {
+	p, _ := hex.DecodeString("40e4350b03d8b0c9e340321210b259d9a20b19632929b4a219254a4269c11f820c75168c6a91d309f4b134a7d715a5ac408991e1cf9415995053cf8a4e185dae22a06617ac51ebf7d232bc49e567f90be4db815c2b88ca0d9a4ef7a5119c0e592c88dfb96706e6510fb8a657c0f70f6695ea310d24786e6d980e9b33cf2665342b965b2391f6bb982c4c5f6058b9cba58038d32452e07cdee9420a8bd7f514e1")
+	for n := 0; n < b.N; n++ {
+		n1, _ := New(p)
+		n1.Bytes()
+		n1.Hash()
+		n1.Payload()
 	}
 }

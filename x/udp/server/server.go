@@ -129,7 +129,7 @@ func ListenAndServe(address string, opts ...Option) error {
 		address:     address,
 		protocol:    defaultProtocol,
 		workers:     uint64(runtime.NumCPU()),
-		storage:     memory.New(ctx, storage.DefaultTTL, 2000000),
+		storage:     memory.New(ctx, 24*time.Hour, 2000000),
 		ctx:         context.Background(),
 		gracePeriod: defaultGracePeriod,
 		logger:      logger.New(),

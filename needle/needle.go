@@ -1,36 +1,42 @@
 package needle
 
 import (
-	"crypto/subtle"
+	"bytes"
+	"errors"
 
-	"github.com/nomasters/haystack/errors"
 	"lukechampine.com/blake3"
 )
 
-// Hash represents an array of length HashLength
-type Hash [32]byte
-
-// Payload represents an array of length PayloadLength
-type Payload [160]byte
-
 const (
 	// HashLength is the length in bytes of the hash prefix in any message
-	HashLength = len(Hash{})
+	HashLength = 32
 	// PayloadLength is the length of the remaining bytes of the message.
-	PayloadLength = len(Payload{})
+	PayloadLength = 160
 	// NeedleLength is the number of bytes required for a valid needle.
 	NeedleLength = HashLength + PayloadLength
-	// ErrorDNE is returned when a key/value par does not exist
-	ErrorDNE = errors.Error("Does Not Exist")
-	// ErrorInvalidHash is an error for in invalid hash
-	ErrorInvalidHash = errors.Error("invalid blake3-256 hash")
-	// ErrorByteSliceLength is an error for an invalid byte slice length passed in to New or FromBytes
-	ErrorByteSliceLength = errors.Error("invalid byte slice length")
 )
 
-// Needle is an immutable container for a [192]byte array that containers a 160 byte payload
+// Hash represents an array of length HashLength
+type Hash [HashLength]byte
+
+// Payload represents an array of length PayloadLength
+type Payload [PayloadLength]byte
+
+// Needle is a container for a 160 byte payload
 // and a 32 byte blake3 hash of the payload.
-type Needle struct{ internal [NeedleLength]byte }
+type Needle struct {
+	hash    Hash
+	payload Payload
+}
+
+var (
+	// ErrorDNE is returned when a key/value par does not exist
+	ErrorDNE = errors.New("Does Not Exist")
+	// ErrorInvalidHash is an error for in invalid hash
+	ErrorInvalidHash = errors.New("invalid blake3-256 hash")
+	// ErrorByteSliceLength is an error for an invalid byte slice length passed in to New or FromBytes
+	ErrorByteSliceLength = errors.New("invalid byte slice length")
+)
 
 // New creates a Needle used for submitting a payload to a Haystack sever. It takes a Payload
 // byte slice that is 160 bytes in length and returns a reference to a
@@ -41,11 +47,10 @@ func New(payload []byte) (*Needle, error) {
 	if len(payload) != PayloadLength {
 		return nil, ErrorByteSliceLength
 	}
-	var n Needle
-	h := blake3.Sum256(payload)
-	copy(n.internal[:HashLength], h[:])
-	copy(n.internal[HashLength:], payload)
-	return &n, nil
+	return &Needle{
+		hash:    Hash(blake3.Sum256(payload)),
+		payload: Payload(payload),
+	}, nil
 }
 
 // FromBytes is intended convert raw bytes (from UDP or storage) into a Needle.
@@ -58,8 +63,10 @@ func FromBytes(b []byte) (*Needle, error) {
 	if len(b) != NeedleLength {
 		return nil, ErrorByteSliceLength
 	}
-	var n Needle
-	copy(n.internal[:], b)
+	n := Needle{
+		hash:    Hash(b[:HashLength]),
+		payload: Payload(b[HashLength:]),
+	}
 	if err := n.validate(); err != nil {
 		return nil, err
 	}
@@ -67,30 +74,27 @@ func FromBytes(b []byte) (*Needle, error) {
 }
 
 // Hash returns a copy of the bytes of the blake3 256 hash of the Needle payload.
-func (n Needle) Hash() Hash {
-	var h Hash
-	copy(h[:], n.internal[:HashLength])
-	return h
+func (n *Needle) Hash() Hash {
+	return n.hash
 }
 
 // Payload returns a byte slice of the Needle payload
-func (n Needle) Payload() Payload {
-	var p Payload
-	copy(p[:], n.internal[HashLength:])
-	return p
+func (n *Needle) Payload() Payload {
+	return n.payload
 }
 
 // Bytes returns a byte slice of the entire 192 byte hash + payload
-func (n Needle) Bytes() []byte {
-	return n.internal[:]
+func (n *Needle) Bytes() []byte {
+	b := make([]byte, NeedleLength)
+	copy(b, n.hash[:])
+	copy(b[HashLength:], n.payload[:])
+	return b
 }
 
 // validate checks that a Needle has a valid hash and that it meets the entropy
 // threshold, it returns either nil or an error.
 func (n *Needle) validate() error {
-	p := n.Payload()
-	h := n.Hash()
-	if hash := blake3.Sum256(p[:]); subtle.ConstantTimeCompare(h[:], hash[:]) == 0 {
+	if hash := blake3.Sum256(n.payload[:]); !bytes.Equal(n.hash[:], hash[:]) {
 		return ErrorInvalidHash
 	}
 	return nil

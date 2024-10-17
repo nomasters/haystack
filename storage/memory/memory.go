@@ -2,11 +2,17 @@ package memory
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
 	"github.com/nomasters/haystack/needle"
 	"github.com/nomasters/haystack/storage"
+)
+
+var (
+	// ErrorStoreFull is used when the Set method receives a nil pointer
+	ErrorStoreFull = errors.New("Store is full")
 )
 
 type value struct {
@@ -38,7 +44,7 @@ func (s *Store) Set(n *needle.Needle) error {
 	s.Lock()
 	if len(s.internal) > s.maxItems {
 		s.Unlock()
-		return storage.ErrorStoreFull
+		return ErrorStoreFull
 	}
 	hash := n.Hash()
 	expiration := time.Now().Add(s.ttl)
