@@ -3,7 +3,7 @@ package cmd
 import (
 	"fmt"
 
-	"github.com/nomasters/haystack/server"
+	"github.com/nomasters/haystack/x/udp/server"
 	"github.com/spf13/cobra"
 )
 
