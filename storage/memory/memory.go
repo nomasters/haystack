@@ -13,6 +13,8 @@ import (
 var (
 	// ErrorStoreFull is used when the Set method receives a nil pointer
 	ErrorStoreFull = errors.New("Store is full")
+	// ErrorDNE is returned when a key/value par does not exist
+	ErrorDNE = errors.New("Does Not Exist")
 )
 
 type value struct {
@@ -72,7 +74,7 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 	v, ok := s.internal[hash]
 	s.RUnlock()
 	if !ok {
-		return nil, needle.ErrorDNE
+		return nil, ErrorDNE
 	}
 	b := append(hash[:], v.payload[:]...)
 	return needle.FromBytes(b)
