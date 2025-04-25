@@ -2,9 +2,8 @@ package logger
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
-
-	"github.com/rs/zerolog"
 )
 
 // Logger is an interface to make swapping out loggers simple
@@ -19,26 +18,28 @@ type Logger interface {
 	// Debugf(format string, v ...any)
 }
 
-// New returns a ZeroLogger reference that satisfies the Logger interface.
-func New() *ZeroLogger {
-	logger := zerolog.New(os.Stderr).
-		With().
-		Timestamp().
-		Logger()
-	return &ZeroLogger{logger: logger}
+// New returns a SlogLogger reference that satisfies the Logger interface.
+func New() *SlogLogger {
+	handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
+		AddSource: false,
+		Level:     slog.LevelInfo,
+	})
+	logger := slog.New(handler)
+	return &SlogLogger{logger: logger}
 }
 
-// ZeroLogger is the default implementation using zerolog structured logs
-type ZeroLogger struct {
-	logger zerolog.Logger
+// SlogLogger is the default implementation using slog structured logs
+type SlogLogger struct {
+	logger *slog.Logger
 }
 
 // Info starts a new message at the info level in the logger
-func (z *ZeroLogger) Info(v ...any) {
-	z.logger.Info().Msg(fmt.Sprint(v...))
+func (s *SlogLogger) Info(v ...any) {
+	s.logger.Info(fmt.Sprint(v...))
 }
 
 // Fatal starts a new message at the fatal level in the logger, exits with status code 1
-func (z *ZeroLogger) Fatal(v ...any) {
-	z.logger.Fatal().Msg(fmt.Sprint(v...))
+func (s *SlogLogger) Fatal(v ...any) {
+	s.logger.Error(fmt.Sprint(v...), slog.String("fatal", "true"))
+	os.Exit(1) // Need to explicitly exit as slog doesn't have a built-in Fatal method
 }
