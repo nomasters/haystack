@@ -22,17 +22,12 @@ type value struct {
 	expiration time.Time
 }
 
-type cleanup struct {
-	hash       needle.Hash
-	expiration time.Time
-}
 
 // Store is a struct that holds the in memory storage state
 type Store struct {
 	sync.RWMutex
 	internal map[needle.Hash]value
 	ttl      time.Duration
-	cleanups chan cleanup
 	maxItems int
 	ctx      context.Context
 	cancel   context.CancelFunc
@@ -56,15 +51,6 @@ func (s *Store) Set(n *needle.Needle) error {
 	}
 	s.Unlock()
 
-	go func() {
-		select {
-		case <-s.ctx.Done():
-			return
-		case <-time.After(s.ttl):
-			s.cleanups <- cleanup{hash: hash, expiration: expiration}
-		}
-	}()
-
 	return nil
 }
 
@@ -81,6 +67,17 @@ func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 }
 
 // Close is meant to conform to the GetSetCloser interface.
+func (s *Store) cleanupExpired() {
+	now := time.Now()
+	s.Lock()
+	for hash, v := range s.internal {
+		if now.After(v.expiration) {
+			delete(s.internal, hash)
+		}
+	}
+	s.Unlock()
+}
+
 func (s *Store) Close() error {
 	s.cancel()
 	return nil
@@ -96,21 +93,17 @@ func New(ctx context.Context, ttl time.Duration, maxItems int) *Store {
 		maxItems: maxItems,
 		ctx:      sctx,
 		cancel:   cancel,
-		cleanups: make(chan cleanup, maxItems),
 	}
 
 	go func() {
+		ticker := time.NewTicker(ttl / 10)
+		defer ticker.Stop()
 		for {
 			select {
 			case <-s.ctx.Done():
 				return
-			case task := <-s.cleanups:
-				s.Lock()
-				v := s.internal[task.hash]
-				if v.expiration.Equal(task.expiration) {
-					delete(s.internal, task.hash)
-				}
-				s.Unlock()
+			case <-ticker.C:
+				s.cleanupExpired()
 			}
 		}
 	}()

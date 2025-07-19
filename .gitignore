@@ -18,3 +18,8 @@ coverage.txt
 .vscode
 
 .DS_Store
+
+# ignore binary
+haystack
+
+benchmark_results*
