@@ -12,6 +12,7 @@ import (
 	"github.com/nomasters/haystack/client"
 	"github.com/nomasters/haystack/needle"
 	"github.com/nomasters/haystack/server"
+	"github.com/nomasters/haystack/storage"
 	"github.com/nomasters/haystack/storage/memory"
 )
 
@@ -390,7 +391,11 @@ func startE2EServer(b *testing.B) string {
 	// Create storage backend with large capacity
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 10000000) // 10M items
-	
+	return startServerWithStorage(b, storage)
+}
+
+// startServerWithStorage starts a server with the given storage backend
+func startServerWithStorage(b *testing.B, storage storage.GetSetCloser) string {
 	// Create server
 	srv := server.New(&server.Config{Storage: storage})
 	

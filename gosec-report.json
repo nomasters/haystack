@@ -1,0 +1,380 @@
+{
+	"Golang errors": {},
+	"Issues": [
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "94: \t// Safe conversion checked above\n95: \theader := NewIndexHeader(uint32(idx.capacity))\n96: \t// UNSAFE: Convert struct pointer to byte array for copying to mmap.\n",
+			"line": "95",
+			"column": "33",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "201: \t// Check capacity - safe conversion since capacity is positive\n202: \tif df.capacity \u003c 0 || atomic.LoadUint32(\u0026df.header.RecordCount) \u003e= uint32(df.capacity) { // Safe conversion checked above\n203: \t\treturn 0, ErrDataFileFull\n",
+			"line": "202",
+			"column": "75",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "HIGH",
+			"confidence": "MEDIUM",
+			"cwe": {
+				"id": "190",
+				"url": "https://cwe.mitre.org/data/definitions/190.html"
+			},
+			"rule_id": "G115",
+			"details": "integer overflow conversion int -\u003e uint32",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "102: \t}\n103: \theader := NewDataHeader(uint32(df.capacity)) // Safe conversion checked above\n104: \t// UNSAFE: Convert struct pointer to byte array for copying to mmap.\n",
+			"line": "103",
+			"column": "32",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "28: func NewIndex(path string, capacity int) (*Index, error) {\n29: \tfile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)\n30: \tif err != nil {\n",
+			"line": "29",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "MEDIUM",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "22",
+				"url": "https://cwe.mitre.org/data/definitions/22.html"
+			},
+			"rule_id": "G304",
+			"details": "Potential file inclusion via variable",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "32: func NewDataFile(path string, capacity int, chunkSize int64) (*DataFile, error) {\n33: \tfile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)\n34: \tif err != nil {\n",
+			"line": "33",
+			"column": "15",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "242",
+				"url": "https://cwe.mitre.org/data/definitions/242.html"
+			},
+			"rule_id": "G103",
+			"details": "Use of unsafe calls should be audited",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "170: \t// 5. All access is through read-write locks protecting concurrent access\n171: \treturn (*IndexEntry)(unsafe.Pointer(\u0026idx.mmap[offset]))\n172: }\n",
+			"line": "171",
+			"column": "23",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "242",
+				"url": "https://cwe.mitre.org/data/definitions/242.html"
+			},
+			"rule_id": "G103",
+			"details": "Use of unsafe calls should be audited",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "143: \t// 4. Header access is read-mostly with atomic updates for entry count\n144: \tidx.header = (*IndexHeader)(unsafe.Pointer(\u0026idx.mmap[0]))\n145: \n",
+			"line": "144",
+			"column": "30",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "242",
+				"url": "https://cwe.mitre.org/data/definitions/242.html"
+			},
+			"rule_id": "G103",
+			"details": "Use of unsafe calls should be audited",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "109: \t// 4. Memory mapping ensures the data persists for the file's lifetime\n110: \tidx.header = (*IndexHeader)(unsafe.Pointer(\u0026idx.mmap[0]))\n111: \n",
+			"line": "110",
+			"column": "30",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "242",
+				"url": "https://cwe.mitre.org/data/definitions/242.html"
+			},
+			"rule_id": "G103",
+			"details": "Use of unsafe calls should be audited",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "100: \t// 3. The struct lifetime exceeds this operation\n101: \theaderBytes := (*[IndexHeaderSize]byte)(unsafe.Pointer(header))\n102: \tcopy(idx.mmap[:IndexHeaderSize], headerBytes[:])\n",
+			"line": "101",
+			"column": "42",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "242",
+				"url": "https://cwe.mitre.org/data/definitions/242.html"
+			},
+			"rule_id": "G103",
+			"details": "Use of unsafe calls should be audited",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "154: \t// 4. Header access is read-mostly with atomic updates for counters\n155: \tdf.header = (*DataHeader)(unsafe.Pointer(\u0026df.mmap[0]))\n156: \t\n",
+			"line": "155",
+			"column": "28",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "242",
+				"url": "https://cwe.mitre.org/data/definitions/242.html"
+			},
+			"rule_id": "G103",
+			"details": "Use of unsafe calls should be audited",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "117: \t// 4. Memory mapping ensures the data persists as long as the file is mapped\n118: \tdf.header = (*DataHeader)(unsafe.Pointer(\u0026df.mmap[0]))\n119: \t\n",
+			"line": "118",
+			"column": "28",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "242",
+				"url": "https://cwe.mitre.org/data/definitions/242.html"
+			},
+			"rule_id": "G103",
+			"details": "Use of unsafe calls should be audited",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "108: \t// 3. The struct lifetime exceeds this operation\n109: \theaderBytes := (*[DataHeaderSize]byte)(unsafe.Pointer(header))\n110: \tcopy(df.mmap[:DataHeaderSize], headerBytes[:])\n",
+			"line": "109",
+			"column": "41",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/store.go",
+			"code": "131: \t\t\tdataFile.Close()\n132: \t\t\tindex.Close()\n133: \t\t\tcancel()\n",
+			"line": "132",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/store.go",
+			"code": "130: \t\tif err := store.rebuildIndex(); err != nil {\n131: \t\t\tdataFile.Close()\n132: \t\t\tindex.Close()\n",
+			"line": "131",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/store.go",
+			"code": "118: \tif err != nil {\n119: \t\tdataFile.Close()\n120: \t\tcancel()\n",
+			"line": "119",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "62: \t\tif err := ValidateIndexHeader(idx.header); err != nil {\n63: \t\t\tidx.Close()\n64: \t\t\treturn nil, fmt.Errorf(\"invalid index file header: %w\", err)\n",
+			"line": "63",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "56: \t\tif err := idx.mapFile(); err != nil {\n57: \t\t\tfile.Close()\n58: \t\t\treturn nil, fmt.Errorf(\"failed to map index file: %w\", err)\n",
+			"line": "57",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "49: \t\tif err := idx.initialize(); err != nil {\n50: \t\t\tfile.Close()\n51: \t\t\treturn nil, fmt.Errorf(\"failed to initialize index file: %w\", err)\n",
+			"line": "50",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/index.go",
+			"code": "42: \tif err != nil {\n43: \t\tfile.Close()\n44: \t\treturn nil, fmt.Errorf(\"failed to stat file: %w\", err)\n",
+			"line": "43",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "67: \t\tif err := ValidateDataHeader(df.header); err != nil {\n68: \t\t\tdf.Close()\n69: \t\t\treturn nil, fmt.Errorf(\"invalid data file header: %w\", err)\n",
+			"line": "68",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "61: \t\tif err := df.mapFile(); err != nil {\n62: \t\t\tfile.Close()\n63: \t\t\treturn nil, fmt.Errorf(\"failed to map data file: %w\", err)\n",
+			"line": "62",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "54: \t\tif err := df.initialize(); err != nil {\n55: \t\t\tfile.Close()\n56: \t\t\treturn nil, fmt.Errorf(\"failed to initialize data file: %w\", err)\n",
+			"line": "55",
+			"column": "4",
+			"nosec": false,
+			"suppressions": null
+		},
+		{
+			"severity": "LOW",
+			"confidence": "HIGH",
+			"cwe": {
+				"id": "703",
+				"url": "https://cwe.mitre.org/data/definitions/703.html"
+			},
+			"rule_id": "G104",
+			"details": "Errors unhandled",
+			"file": "/Users/n2p5/src/github.com/nomasters/haystack/storage/mmap/datafile.go",
+			"code": "47: \tif err != nil {\n48: \t\tfile.Close()\n49: \t\treturn nil, fmt.Errorf(\"failed to stat file: %w\", err)\n",
+			"line": "48",
+			"column": "3",
+			"nosec": false,
+			"suppressions": null
+		}
+	],
+	"Stats": {
+		"files": 14,
+		"lines": 2610,
+		"nosec": 0,
+		"found": 23
+	},
+	"GosecVersion": "dev"
+}

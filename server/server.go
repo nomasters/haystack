@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nomasters/haystack/logger"
 	"github.com/nomasters/haystack/needle"
 	"github.com/nomasters/haystack/storage"
 )
@@ -15,6 +16,7 @@ import (
 // It combines transport and business logic for maximum efficiency.
 type Server struct {
 	storage  storage.GetSetCloser
+	logger   logger.Logger
 	conn     net.PacketConn
 	bufPool  *sync.Pool
 	ctx      context.Context
@@ -26,6 +28,8 @@ type Server struct {
 type Config struct {
 	// Storage backend to use
 	Storage storage.GetSetCloser
+	// Logger for error and info messages (optional, uses NoOp if nil)
+	Logger logger.Logger
 }
 
 // New creates a new Haystack UDP server with the given configuration.
@@ -34,10 +38,17 @@ func New(config *Config) *Server {
 		config = &Config{}
 	}
 	
+	// Use NoOp logger if none provided
+	log := config.Logger
+	if log == nil {
+		log = logger.NewNoOp()
+	}
+	
 	ctx, cancel := context.WithCancel(context.Background())
 	
 	return &Server{
 		storage: config.Storage,
+		logger:  log,
 		ctx:     ctx,
 		cancel:  cancel,
 		done:    make(chan struct{}),
@@ -80,7 +91,9 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	
 	// Close the connection to unblock ReadFrom
 	if s.conn != nil {
-		s.conn.Close()
+		if err := s.conn.Close(); err != nil {
+			s.logger.Errorf("Failed to close connection during shutdown: %v", err)
+		}
 	}
 	
 	// Wait for serve loop to finish or timeout
@@ -97,7 +110,9 @@ func (s *Server) serve() {
 	defer close(s.done)
 	defer func() {
 		if s.conn != nil {
-			s.conn.Close()
+			if err := s.conn.Close(); err != nil {
+				s.logger.Errorf("Failed to close connection during cleanup: %v", err)
+			}
 		}
 	}()
 	
@@ -122,7 +137,9 @@ func (s *Server) processPacket() error {
 	defer s.bufPool.Put(buf)
 	
 	// Set a read timeout to prevent blocking forever
-	s.conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+	if err := s.conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+		return fmt.Errorf("failed to set read deadline: %w", err)
+	}
 	
 	n, addr, err := s.conn.ReadFrom(buf)
 	if err != nil {

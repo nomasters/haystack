@@ -51,7 +51,3 @@ A 32 byte request is a read request. It implies that the requestor would like th
 #### Write Requests
 
 A write request my be 192 bytes. The server will verify that these bytes are a valid Needles (that the final 160 bytes sha256 hash match the first 32 bytes hash included in the payload). If this Needle is valid, it is stored. The server provides no response for this operation. If a client wants to confirm that a write was completed successfully, it should submit a read request to confirm.
-
-
-
-If a preshared key is not included, the mac is simply of the hash + timestamp, and the nacl_sign bits are always included even if a private or pub key are not present, if they are not present, the server generates a preshared key and signs the payload, even though the client doesn't have a way to verify. This gives us a consistent payload regardless of implementation.

@@ -7,15 +7,17 @@ import (
 	"sync"
 	"time"
 
+	"github.com/nomasters/haystack/logger"
 	"github.com/nomasters/haystack/needle"
 )
 
 // Client provides a high-performance, connection-pooled interface to Haystack servers.
 // It handles connection management, timeouts, and error recovery automatically.
 type Client struct {
-	address     string
-	connPool    *connectionPool
-	readTimeout time.Duration
+	address      string
+	logger       logger.Logger
+	connPool     *connectionPool
+	readTimeout  time.Duration
 	writeTimeout time.Duration
 }
 
@@ -35,6 +37,9 @@ type Config struct {
 	
 	// How long to keep idle connections (default: 30s)
 	IdleTimeout time.Duration
+	
+	// Logger for error and debug messages (optional, uses NoOp if nil)
+	Logger logger.Logger
 }
 
 // DefaultConfig returns a configuration with sensible defaults.
@@ -45,6 +50,7 @@ func DefaultConfig(address string) *Config {
 		ReadTimeout:    5 * time.Second,
 		WriteTimeout:   5 * time.Second,
 		IdleTimeout:    30 * time.Second,
+		Logger:         nil, // Will use NoOp by default
 	}
 }
 
@@ -68,10 +74,17 @@ func New(config *Config) (*Client, error) {
 		config.IdleTimeout = 30 * time.Second
 	}
 	
-	pool := newConnectionPool(config.Address, config.MaxConnections, config.IdleTimeout)
+	// Use NoOp logger if none provided
+	log := config.Logger
+	if log == nil {
+		log = logger.NewNoOp()
+	}
+	
+	pool := newConnectionPool(config.Address, config.MaxConnections, config.IdleTimeout, log)
 	
 	return &Client{
 		address:      config.Address,
+		logger:       log,
 		connPool:     pool,
 		readTimeout:  config.ReadTimeout,
 		writeTimeout: config.WriteTimeout,
@@ -99,9 +112,13 @@ func (c *Client) SetBytes(ctx context.Context, data []byte) error {
 	
 	// Set write timeout
 	if deadline, ok := ctx.Deadline(); ok {
-		conn.SetWriteDeadline(deadline)
+		if err := conn.SetWriteDeadline(deadline); err != nil {
+			c.logger.Errorf("Failed to set write deadline: %v", err)
+		}
 	} else {
-		conn.SetWriteDeadline(time.Now().Add(c.writeTimeout))
+		if err := conn.SetWriteDeadline(time.Now().Add(c.writeTimeout)); err != nil {
+			c.logger.Errorf("Failed to set write timeout: %v", err)
+		}
 	}
 	
 	_, err = conn.Write(data)
@@ -138,9 +155,13 @@ func (c *Client) GetBytes(ctx context.Context, hashBytes []byte) ([]byte, error)
 	
 	// Set timeouts
 	if deadline, ok := ctx.Deadline(); ok {
-		conn.SetDeadline(deadline)
+		if err := conn.SetDeadline(deadline); err != nil {
+			c.logger.Errorf("Failed to set read deadline: %v", err)
+		}
 	} else {
-		conn.SetDeadline(time.Now().Add(c.readTimeout))
+		if err := conn.SetDeadline(time.Now().Add(c.readTimeout)); err != nil {
+			c.logger.Errorf("Failed to set read timeout: %v", err)
+		}
 	}
 	
 	// Send hash
@@ -180,6 +201,7 @@ type connectionPool struct {
 	address     string
 	maxConns    int
 	idleTimeout time.Duration
+	logger      logger.Logger
 	conns       chan *pooledConn
 	mu          sync.Mutex
 	closed      bool
@@ -202,11 +224,12 @@ type PoolStats struct {
 }
 
 // newConnectionPool creates a new connection pool.
-func newConnectionPool(address string, maxConns int, idleTimeout time.Duration) *connectionPool {
+func newConnectionPool(address string, maxConns int, idleTimeout time.Duration, log logger.Logger) *connectionPool {
 	p := &connectionPool{
 		address:     address,
 		maxConns:    maxConns,
 		idleTimeout: idleTimeout,
+		logger:      log,
 		conns:       make(chan *pooledConn, maxConns),
 	}
 	
@@ -230,7 +253,9 @@ func (p *connectionPool) Get() (net.Conn, error) {
 	select {
 	case conn := <-p.conns:
 		if conn.bad || time.Since(conn.lastUsed) > p.idleTimeout {
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				p.logger.Errorf("Failed to close stale connection: %v", err)
+			}
 			return p.createConn()
 		}
 		conn.lastUsed = time.Now()
@@ -254,11 +279,15 @@ func (p *connectionPool) Put(conn net.Conn) {
 			// Successfully returned to pool
 		default:
 			// Pool full, close connection
-			conn.Close()
+			if err := conn.Close(); err != nil {
+				p.logger.Errorf("Failed to close overflow connection: %v", err)
+			}
 		}
 	} else {
 		// Bad connection or not pooled, close it
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			p.logger.Errorf("Failed to close bad connection: %v", err)
+		}
 	}
 }
 
@@ -304,13 +333,17 @@ func (p *connectionPool) cleanup() {
 		select {
 		case conn := <-p.conns:
 			if time.Since(conn.lastUsed) > p.idleTimeout {
-				conn.Close()
+				if err := conn.Close(); err != nil {
+					p.logger.Errorf("Failed to close idle connection during cleanup: %v", err)
+				}
 			} else {
 				// Put it back
 				select {
 				case p.conns <- conn:
 				default:
-					conn.Close()
+					if err := conn.Close(); err != nil {
+						p.logger.Errorf("Failed to close connection during cleanup: %v", err)
+					}
 				}
 			}
 		default:
@@ -333,7 +366,9 @@ func (p *connectionPool) Close() error {
 	
 	// Close all pooled connections
 	for conn := range p.conns {
-		conn.Close()
+		if err := conn.Close(); err != nil {
+			p.logger.Errorf("Failed to close pooled connection during shutdown: %v", err)
+		}
 	}
 	
 	return nil

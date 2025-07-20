@@ -7,15 +7,20 @@ import (
 	"time"
 
 	"github.com/nomasters/haystack/client"
+	"github.com/nomasters/haystack/logger"
 	"github.com/nomasters/haystack/needle"
 )
 
 func main() {
-	// Create a Haystack client
+	// Create a Haystack client with logging
 	config := client.DefaultConfig("localhost:1337")
 	config.MaxConnections = 10
 	config.ReadTimeout = 5 * time.Second
 	config.WriteTimeout = 5 * time.Second
+	
+	// Enable logging for debugging connection pool issues
+	// Use logger.NewNoOp() for silent operation
+	config.Logger = logger.New()
 	
 	haystackClient, err := client.New(config)
 	if err != nil {
@@ -114,6 +119,9 @@ func main() {
 	fmt.Printf("Active connections: %d\n", stats.Active)
 	fmt.Printf("Idle connections: %d\n", stats.Idle)
 	fmt.Printf("Total connections created: %d\n", stats.Total)
+	
+	// Note: The client is logging connection pool events to help with debugging.
+	// In production, you might want to use logger.NewNoOp() for silent operation.
 	
 	// Example 4: Error handling
 	fmt.Println("\n=== Example 4: Error Handling ===")

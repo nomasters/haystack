@@ -17,8 +17,8 @@ var (
 	ErrorDNE = errors.New("Does Not Exist")
 )
 
-type value struct {
-	payload    needle.Payload
+type entry struct {
+	needle     *needle.Needle
 	expiration time.Time
 }
 
@@ -26,7 +26,7 @@ type value struct {
 // Store is a struct that holds the in memory storage state
 type Store struct {
 	sync.RWMutex
-	internal map[needle.Hash]value
+	internal map[needle.Hash]entry
 	ttl      time.Duration
 	maxItems int
 	ctx      context.Context
@@ -45,8 +45,8 @@ func (s *Store) Set(n *needle.Needle) error {
 	}
 	hash := n.Hash()
 	expiration := time.Now().Add(s.ttl)
-	s.internal[hash] = value{
-		payload:    n.Payload(),
+	s.internal[hash] = entry{
+		needle:     n,
 		expiration: expiration,
 	}
 	s.Unlock()
@@ -57,21 +57,20 @@ func (s *Store) Set(n *needle.Needle) error {
 // Get takes a 32 byte hash and returns a pointer to a needle and an error
 func (s *Store) Get(hash needle.Hash) (*needle.Needle, error) {
 	s.RLock()
-	v, ok := s.internal[hash]
+	e, ok := s.internal[hash]
 	s.RUnlock()
 	if !ok {
 		return nil, ErrorDNE
 	}
-	b := append(hash[:], v.payload[:]...)
-	return needle.FromBytes(b)
+	return e.needle, nil
 }
 
 // Close is meant to conform to the GetSetCloser interface.
 func (s *Store) cleanupExpired() {
 	now := time.Now()
 	s.Lock()
-	for hash, v := range s.internal {
-		if now.After(v.expiration) {
+	for hash, e := range s.internal {
+		if now.After(e.expiration) {
 			delete(s.internal, hash)
 		}
 	}
@@ -88,7 +87,7 @@ func New(ctx context.Context, ttl time.Duration, maxItems int) *Store {
 	sctx, cancel := context.WithCancel(ctx)
 
 	s := Store{
-		internal: make(map[needle.Hash]value),
+		internal: make(map[needle.Hash]entry),
 		ttl:      ttl,
 		maxItems: maxItems,
 		ctx:      sctx,
