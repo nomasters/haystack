@@ -14,7 +14,7 @@ var (
 	// ErrorStoreFull is used when the Set method receives a nil pointer
 	ErrorStoreFull = errors.New("Store is full")
 	// ErrorDNE is returned when a key/value par does not exist
-	ErrorDNE = errors.New("Does Not Exist")
+	ErrorDNE = errors.New("does not exist")
 )
 
 type entry struct {

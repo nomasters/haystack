@@ -8,7 +8,7 @@ import (
 
 var (
 	// ErrorNeedleIsNil is used when the Set method receives a nil pointer
-	ErrorNeedleIsNil = errors.New("Cannot Set a nil *Needle")
+	ErrorNeedleIsNil = errors.New("cannot set a nil *Needle")
 )
 
 // Getter takes a needle.Hash and returns a reference to needle.Needle and an error.

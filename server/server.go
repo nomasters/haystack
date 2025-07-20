@@ -134,7 +134,11 @@ func (s *Server) serve() {
 func (s *Server) processPacket() error {
 	// Get a buffer from the pool
 	buf := s.bufPool.Get().([]byte)
-	defer s.bufPool.Put(buf)
+	defer func() {
+		// Reset buffer length and return to pool
+		//nolint:staticcheck // SA6002: slice argument is intentional for buffer pools
+		s.bufPool.Put(buf[:cap(buf)])
+	}()
 	
 	// Set a read timeout to prevent blocking forever
 	if err := s.conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {

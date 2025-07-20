@@ -14,7 +14,11 @@ func TestServer_SetAndGet(t *testing.T) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 1000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			t.Errorf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -25,7 +29,9 @@ func TestServer_SetAndGet(t *testing.T) {
 		t.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		t.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	serverDone := make(chan error, 1)
@@ -41,7 +47,11 @@ func TestServer_SetAndGet(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to server: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 	
 	// Test data
 	payload := make([]byte, needle.PayloadLength)
@@ -63,7 +73,9 @@ func TestServer_SetAndGet(t *testing.T) {
 		}
 		
 		// Try to read response with timeout (should timeout as no response expected)
-		conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond))
+		if err := conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
+			t.Errorf("Failed to set read deadline: %v", err)
+		}
 		buffer := make([]byte, needle.NeedleLength)
 		_, err = conn.Read(buffer)
 		
@@ -85,7 +97,9 @@ func TestServer_SetAndGet(t *testing.T) {
 		}
 		
 		// Read response
-		conn.SetReadDeadline(time.Now().Add(time.Second))
+		if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+			t.Errorf("Failed to set read deadline: %v", err)
+		}
 		buffer := make([]byte, needle.NeedleLength)
 		n, err := conn.Read(buffer)
 		if err != nil {
@@ -130,7 +144,11 @@ func TestServer_InvalidPackets(t *testing.T) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 1000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			t.Errorf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -141,11 +159,15 @@ func TestServer_InvalidPackets(t *testing.T) {
 		t.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		t.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
-		srv.ListenAndServe(addr)
+		if err := srv.ListenAndServe(addr); err != nil {
+			t.Errorf("Server listen failed: %v", err)
+		}
 	}()
 	
 	// Give server time to start
@@ -156,7 +178,11 @@ func TestServer_InvalidPackets(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to server: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 	
 	// Test invalid packet sizes (should be dropped silently)
 	invalidSizes := []int{0, 1, 10, 31, 33, 100, 191, 193, 300}
@@ -177,23 +203,31 @@ func TestServer_InvalidPackets(t *testing.T) {
 	}
 	
 	// Try to read response (for the hash query)
-	conn.SetReadDeadline(time.Now().Add(time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Errorf("Failed to set read deadline: %v", err)
+	}
 	buffer := make([]byte, needle.NeedleLength)
-	_, err = conn.Read(buffer)
+	_, _ = conn.Read(buffer)
 	// This will likely error since the hash doesn't exist, but that's expected
 	// The important thing is that the server is still responding
 	
 	// Shutdown server
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		t.Errorf("Failed to shutdown server: %v", err)
+	}
 }
 
 func TestServer_GetNonExistent(t *testing.T) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 1000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			t.Errorf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -204,11 +238,15 @@ func TestServer_GetNonExistent(t *testing.T) {
 		t.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		t.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
-		srv.ListenAndServe(addr)
+		if err := srv.ListenAndServe(addr); err != nil {
+			t.Errorf("Server listen failed: %v", err)
+		}
 	}()
 	
 	// Give server time to start
@@ -219,7 +257,11 @@ func TestServer_GetNonExistent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to connect to server: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			t.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 	
 	// Try to get a non-existent needle
 	nonExistentHash := make([]byte, needle.HashLength)
@@ -233,7 +275,9 @@ func TestServer_GetNonExistent(t *testing.T) {
 	}
 	
 	// Try to read response with timeout
-	conn.SetReadDeadline(time.Now().Add(time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(time.Second)); err != nil {
+		t.Errorf("Failed to set read deadline: %v", err)
+	}
 	buffer := make([]byte, needle.NeedleLength)
 	_, err = conn.Read(buffer)
 	
@@ -245,7 +289,9 @@ func TestServer_GetNonExistent(t *testing.T) {
 	// Shutdown server
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		t.Errorf("Failed to shutdown server: %v", err)
+	}
 }
 
 func TestServer_NoStorage(t *testing.T) {
@@ -263,7 +309,11 @@ func TestServer_Shutdown(t *testing.T) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 1000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			t.Errorf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -274,11 +324,15 @@ func TestServer_Shutdown(t *testing.T) {
 		t.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		t.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
-		srv.ListenAndServe(addr)
+		if err := srv.ListenAndServe(addr); err != nil {
+			t.Errorf("Server listen failed: %v", err)
+		}
 	}()
 	
 	// Give server time to start

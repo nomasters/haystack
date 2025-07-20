@@ -11,7 +11,11 @@ import (
 func BenchmarkMemoryStore_Set(b *testing.B) {
 	ctx := context.Background()
 	store := New(ctx, time.Hour, 1000000)
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			b.Fatalf("Failed to close store: %v", err)
+		}
+	}()
 
 	payload := make([]byte, needle.PayloadLength)
 	for i := range payload {
@@ -37,7 +41,11 @@ func BenchmarkMemoryStore_Set(b *testing.B) {
 func BenchmarkMemoryStore_Get(b *testing.B) {
 	ctx := context.Background()
 	store := New(ctx, time.Hour, 1000000)
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			b.Fatalf("Failed to close store: %v", err)
+		}
+	}()
 
 	payload := make([]byte, needle.PayloadLength)
 	for i := range payload {
@@ -70,7 +78,11 @@ func BenchmarkMemoryStore_Get(b *testing.B) {
 func BenchmarkMemoryStore_SetGet_Mixed(b *testing.B) {
 	ctx := context.Background()
 	store := New(ctx, time.Hour, 1000000)
-	defer store.Close()
+	defer func() {
+		if err := store.Close(); err != nil {
+			b.Fatalf("Failed to close store: %v", err)
+		}
+	}()
 
 	payload := make([]byte, needle.PayloadLength)
 	for i := range payload {

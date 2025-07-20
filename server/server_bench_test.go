@@ -18,7 +18,11 @@ func BenchmarkServer_SET(b *testing.B) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 100000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			b.Fatalf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -29,7 +33,9 @@ func BenchmarkServer_SET(b *testing.B) {
 		b.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		b.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
@@ -56,7 +62,11 @@ func BenchmarkServer_SET(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to connect to server: %v", err)
 	}
-	defer conn.Close()
+	defer func() {
+		if err := conn.Close(); err != nil {
+			b.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 	
 	b.ResetTimer()
 	b.ReportAllocs()
@@ -72,7 +82,9 @@ func BenchmarkServer_SET(b *testing.B) {
 	// Cleanup
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		b.Errorf("Failed to shutdown server: %v", err)
+	}
 }
 
 // BenchmarkServer_GET benchmarks read operations from the server
@@ -80,7 +92,11 @@ func BenchmarkServer_GET(b *testing.B) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 100000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			b.Fatalf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -91,7 +107,9 @@ func BenchmarkServer_GET(b *testing.B) {
 		b.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		b.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
@@ -148,12 +166,16 @@ func BenchmarkServer_GET(b *testing.B) {
 		}
 	}
 	
-	conn.Close()
+	if err := conn.Close(); err != nil {
+		b.Errorf("Failed to close connection: %v", err)
+	}
 	
 	// Cleanup
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		b.Errorf("Failed to shutdown server: %v", err)
+	}
 }
 
 // BenchmarkServer_Concurrent_SET benchmarks concurrent write operations
@@ -161,7 +183,11 @@ func BenchmarkServer_Concurrent_SET(b *testing.B) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 100000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			b.Fatalf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -172,7 +198,9 @@ func BenchmarkServer_Concurrent_SET(b *testing.B) {
 		b.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		b.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
@@ -205,7 +233,11 @@ func BenchmarkServer_Concurrent_SET(b *testing.B) {
 			b.Errorf("Failed to connect to server: %v", err)
 			return
 		}
-		defer conn.Close()
+		defer func() {
+		if err := conn.Close(); err != nil {
+			b.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 		
 		for pb.Next() {
 			_, err := conn.Write(testNeedle.Bytes())
@@ -219,7 +251,9 @@ func BenchmarkServer_Concurrent_SET(b *testing.B) {
 	// Cleanup
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		b.Errorf("Failed to shutdown server: %v", err)
+	}
 }
 
 // BenchmarkServer_Concurrent_GET benchmarks concurrent read operations
@@ -227,7 +261,11 @@ func BenchmarkServer_Concurrent_GET(b *testing.B) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 100000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			b.Fatalf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -238,7 +276,9 @@ func BenchmarkServer_Concurrent_GET(b *testing.B) {
 		b.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		b.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
@@ -270,7 +310,9 @@ func BenchmarkServer_Concurrent_GET(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to store test needle: %v", err)
 	}
-	setupConn.Close()
+	if err := setupConn.Close(); err != nil {
+		b.Errorf("Failed to close setup connection: %v", err)
+	}
 	
 	// Give storage time to complete
 	time.Sleep(10 * time.Millisecond)
@@ -288,7 +330,11 @@ func BenchmarkServer_Concurrent_GET(b *testing.B) {
 			b.Errorf("Failed to connect to server: %v", err)
 			return
 		}
-		defer conn.Close()
+		defer func() {
+		if err := conn.Close(); err != nil {
+			b.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 		
 		for pb.Next() {
 			// Send hash query
@@ -311,7 +357,9 @@ func BenchmarkServer_Concurrent_GET(b *testing.B) {
 	// Cleanup
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		b.Errorf("Failed to shutdown server: %v", err)
+	}
 }
 
 // BenchmarkServer_Mixed_Operations benchmarks mixed read/write workload
@@ -319,7 +367,11 @@ func BenchmarkServer_Mixed_Operations(b *testing.B) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 100000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			b.Fatalf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -330,7 +382,9 @@ func BenchmarkServer_Mixed_Operations(b *testing.B) {
 		b.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		b.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
@@ -367,7 +421,9 @@ func BenchmarkServer_Mixed_Operations(b *testing.B) {
 		
 		storedHashes = append(storedHashes, testNeedle.Hash())
 	}
-	setupConn.Close()
+	if err := setupConn.Close(); err != nil {
+		b.Errorf("Failed to close setup connection: %v", err)
+	}
 	
 	// Give storage time to complete
 	time.Sleep(100 * time.Millisecond)
@@ -384,7 +440,11 @@ func BenchmarkServer_Mixed_Operations(b *testing.B) {
 			b.Errorf("Failed to connect to server: %v", err)
 			return
 		}
-		defer conn.Close()
+		defer func() {
+		if err := conn.Close(); err != nil {
+			b.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 		
 		for pb.Next() {
 			opNum := atomic.AddInt64(&opCounter, 1)
@@ -431,7 +491,9 @@ func BenchmarkServer_Mixed_Operations(b *testing.B) {
 	// Cleanup
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		b.Errorf("Failed to shutdown server: %v", err)
+	}
 }
 
 // BenchmarkServer_Throughput measures overall throughput with multiple connections
@@ -443,7 +505,11 @@ func BenchmarkServer_Throughput(b *testing.B) {
 	// Create storage backend
 	ctx := context.Background()
 	storage := memory.New(ctx, time.Hour, 100000)
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			b.Fatalf("Failed to close storage: %v", err)
+		}
+	}()
 	
 	// Create server
 	srv := New(&Config{Storage: storage})
@@ -454,7 +520,9 @@ func BenchmarkServer_Throughput(b *testing.B) {
 		b.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		b.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
@@ -497,7 +565,11 @@ func BenchmarkServer_Throughput(b *testing.B) {
 						b.Errorf("Failed to connect to server: %v", err)
 						return
 					}
-					defer conn.Close()
+					defer func() {
+		if err := conn.Close(); err != nil {
+			b.Errorf("Failed to close connection: %v", err)
+		}
+	}()
 					
 					for j := 0; j < opsPerConn; j++ {
 						_, err := conn.Write(testNeedle.Bytes())
@@ -516,5 +588,7 @@ func BenchmarkServer_Throughput(b *testing.B) {
 	// Cleanup
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
-	srv.Shutdown(shutdownCtx)
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		b.Errorf("Failed to shutdown server: %v", err)
+	}
 }

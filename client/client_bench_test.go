@@ -24,7 +24,11 @@ func BenchmarkClient_Set(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 	
 	ctx := context.Background()
 	
@@ -59,7 +63,11 @@ func BenchmarkClient_Get(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 	
 	ctx := context.Background()
 	
@@ -102,7 +110,11 @@ func BenchmarkClient_SetBytes(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 	
 	ctx := context.Background()
 	
@@ -138,7 +150,11 @@ func BenchmarkClient_GetBytes(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 	
 	ctx := context.Background()
 	
@@ -182,7 +198,11 @@ func BenchmarkClient_Concurrent_Set(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 	
 	// Create test needle
 	payload := make([]byte, needle.PayloadLength)
@@ -220,7 +240,11 @@ func BenchmarkClient_Concurrent_Get(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 	
 	ctx := context.Background()
 	
@@ -268,7 +292,11 @@ func BenchmarkClient_Mixed_Workload(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 	
 	ctx := context.Background()
 	
@@ -350,7 +378,11 @@ func BenchmarkClient_ConnectionPool(b *testing.B) {
 			if err != nil {
 				b.Fatalf("Failed to create client: %v", err)
 			}
-			defer client.Close()
+			defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 			
 			// Create test needle
 			payload := make([]byte, needle.PayloadLength)
@@ -395,7 +427,11 @@ func BenchmarkClient_HighThroughput(b *testing.B) {
 	if err != nil {
 		b.Fatalf("Failed to create client: %v", err)
 	}
-	defer client.Close()
+	defer func() {
+		if err := client.Close(); err != nil {
+			b.Fatalf("Failed to close client: %v", err)
+		}
+	}()
 	
 	// Create test needle
 	payload := make([]byte, needle.PayloadLength)
@@ -457,7 +493,9 @@ func startBenchServer(b *testing.B) string {
 		b.Fatalf("Failed to find available port: %v", err)
 	}
 	addr := listener.LocalAddr().String()
-	listener.Close()
+	if err := listener.Close(); err != nil {
+		b.Fatalf("Failed to close listener: %v", err)
+	}
 	
 	// Start server
 	go func() {
@@ -473,8 +511,12 @@ func startBenchServer(b *testing.B) string {
 	b.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		srv.Shutdown(ctx)
-		storage.Close()
+		if err := srv.Shutdown(ctx); err != nil {
+			b.Errorf("Failed to shutdown server: %v", err)
+		}
+		if err := storage.Close(); err != nil {
+			b.Errorf("Failed to close storage: %v", err)
+		}
 	})
 	
 	return addr

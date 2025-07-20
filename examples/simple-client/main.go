@@ -26,7 +26,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to create Haystack client: %v", err)
 	}
-	defer haystackClient.Close()
+	defer func() {
+		if err := haystackClient.Close(); err != nil {
+			log.Printf("Warning: Failed to close client: %v", err)
+		}
+	}()
 	
 	ctx := context.Background()
 	

@@ -13,7 +13,7 @@ const (
 	IndexMagic = "HAYSTIDX" // Index file magic number
 	
 	// Version information
-	FormatVersion = uint32(1)
+	FormatVersion = uint32(2) // Bumped to v2 for uint64 capacity/count fields
 	
 	// Record sizes
 	RecordSize      = 208 // 192 needle + 8 expiration + 8 flags
@@ -33,22 +33,22 @@ const (
 type DataHeader struct {
 	Magic       [8]byte   // "HAYSTDAT"
 	Version     uint32    // Format version
-	RecordCount uint32    // Number of records
-	Capacity    uint32    // Maximum records
+	RecordCount uint64    // Number of records
+	Capacity    uint64    // Maximum records
 	RecordSize  uint32    // Size of each record (should be 208)
 	Checksum    uint32    // Header checksum
-	Reserved    [36]byte  // Future expansion
+	Reserved    [28]byte  // Future expansion (reduced to accommodate larger fields)
 }
 
 // IndexHeader represents the header of an index file.
 type IndexHeader struct {
 	Magic       [8]byte   // "HAYSTIDX"
 	Version     uint32    // Format version
-	EntryCount  uint32    // Number of index entries
-	Capacity    uint32    // Maximum entries
+	EntryCount  uint64    // Number of index entries
+	Capacity    uint64    // Maximum entries
 	EntrySize   uint32    // Size of each entry (should be 40)
 	Checksum    uint32    // Header checksum
-	Reserved    [36]byte  // Future expansion
+	Reserved    [28]byte  // Future expansion (reduced to accommodate larger fields)
 }
 
 // Record represents a single record in the data file.
@@ -56,8 +56,8 @@ type Record struct {
 	data []byte // Raw record data (208 bytes)
 }
 
-// NewRecord creates a new record from a needle and expiration time.
-func NewRecord(n *needle.Needle, expiration time.Time) *Record {
+// newRecord creates a new record from a needle and expiration time.
+func newRecord(n *needle.Needle, expiration time.Time) *Record {
 	data := make([]byte, RecordSize)
 	
 	// Copy needle data (first 192 bytes)
@@ -78,8 +78,8 @@ func NewRecord(n *needle.Needle, expiration time.Time) *Record {
 	return &Record{data: data}
 }
 
-// RecordFromBytes creates a record from raw bytes.
-func RecordFromBytes(data []byte) (*Record, error) {
+// recordFromBytes creates a record from raw bytes.
+func recordFromBytes(data []byte) (*Record, error) {
 	if len(data) != RecordSize {
 		return nil, ErrInvalidRecord
 	}
@@ -139,24 +139,19 @@ func (r *Record) Bytes() []byte {
 	return r.data
 }
 
-// IndexEntry represents a single entry in the index file.
-type IndexEntry struct {
-	Hash   [32]byte // SHA256 hash
-	Offset uint64   // Offset in data file
-}
 
 // Stats provides statistics about the storage.
 type Stats struct {
-	TotalRecords   int64 // Total number of records
-	ActiveRecords  int64 // Number of active records
-	DeletedRecords int64 // Number of deleted records
-	ExpiredRecords int64 // Number of expired records
-	DataFileSize   int64 // Size of data file in bytes
-	IndexFileSize  int64 // Size of index file in bytes
+	TotalRecords   uint64 // Total number of records
+	ActiveRecords  uint64 // Number of active records
+	DeletedRecords uint64 // Number of deleted records
+	ExpiredRecords uint64 // Number of expired records
+	DataFileSize   int64  // Size of data file in bytes (can be negative for errors)
+	IndexFileSize  int64  // Size of index file in bytes (can be negative for errors)
 }
 
-// NewDataHeader creates a new data file header.
-func NewDataHeader(capacity uint32) *DataHeader {
+// newDataHeader creates a new data file header.
+func newDataHeader(capacity uint64) *DataHeader {
 	header := &DataHeader{
 		Version:    FormatVersion,
 		Capacity:   capacity,
@@ -166,8 +161,8 @@ func NewDataHeader(capacity uint32) *DataHeader {
 	return header
 }
 
-// NewIndexHeader creates a new index file header.
-func NewIndexHeader(capacity uint32) *IndexHeader {
+// newIndexHeader creates a new index file header.
+func newIndexHeader(capacity uint64) *IndexHeader {
 	header := &IndexHeader{
 		Version:   FormatVersion,
 		Capacity:  capacity,
@@ -177,8 +172,8 @@ func NewIndexHeader(capacity uint32) *IndexHeader {
 	return header
 }
 
-// ValidateDataHeader validates a data file header.
-func ValidateDataHeader(header *DataHeader) error {
+// validateDataHeader validates a data file header.
+func validateDataHeader(header *DataHeader) error {
 	if string(header.Magic[:]) != DataMagic {
 		return ErrCorruptedFile
 	}
@@ -194,8 +189,8 @@ func ValidateDataHeader(header *DataHeader) error {
 	return nil
 }
 
-// ValidateIndexHeader validates an index file header.
-func ValidateIndexHeader(header *IndexHeader) error {
+// validateIndexHeader validates an index file header.
+func validateIndexHeader(header *IndexHeader) error {
 	if string(header.Magic[:]) != IndexMagic {
 		return ErrCorruptedFile
 	}

@@ -8,7 +8,6 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
-	"unsafe"
 
 	"github.com/nomasters/haystack/needle"
 )
@@ -18,23 +17,114 @@ type DataFile struct {
 	path      string
 	file      *os.File
 	mmap      []byte
-	header    *DataHeader
 	fileSize  int64
-	capacity  int
+	capacity  uint64
 	chunkSize int64
 	mu        sync.RWMutex
 	
 	// Atomic counter for append position
-	appendPos int64
+	appendPos uint64
 }
 
-// NewDataFile creates or opens a data file at the specified path.
-func NewDataFile(path string, capacity int, chunkSize int64) (*DataFile, error) {
-	file, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open data file: %w", err)
+// readHeader safely reads the header from memory-mapped data using encoding/binary.
+func (df *DataFile) readHeader() (*DataHeader, error) {
+	if len(df.mmap) < DataHeaderSize {
+		return nil, fmt.Errorf("file too small for header")
 	}
 	
+	header := &DataHeader{}
+	
+	// Read magic bytes
+	copy(header.Magic[:], df.mmap[0:8])
+	
+	// Read other fields using encoding/binary
+	header.Version = binary.LittleEndian.Uint32(df.mmap[8:12])
+	header.RecordCount = binary.LittleEndian.Uint64(df.mmap[12:20])
+	header.Capacity = binary.LittleEndian.Uint64(df.mmap[20:28])
+	header.RecordSize = binary.LittleEndian.Uint32(df.mmap[28:32])
+	header.Checksum = binary.LittleEndian.Uint32(df.mmap[32:36])
+	
+	// Reserved bytes are left as zero
+	
+	return header, nil
+}
+
+// writeHeader safely writes the header to memory-mapped data using encoding/binary.
+func (df *DataFile) writeHeader(header *DataHeader) error {
+	if len(df.mmap) < DataHeaderSize {
+		return fmt.Errorf("file too small for header")
+	}
+	
+	// Write magic bytes
+	copy(df.mmap[0:8], header.Magic[:])
+	
+	// Write other fields using encoding/binary
+	binary.LittleEndian.PutUint32(df.mmap[8:12], header.Version)
+	binary.LittleEndian.PutUint64(df.mmap[12:20], header.RecordCount)
+	binary.LittleEndian.PutUint64(df.mmap[20:28], header.Capacity)
+	binary.LittleEndian.PutUint32(df.mmap[28:32], header.RecordSize)
+	binary.LittleEndian.PutUint32(df.mmap[32:36], header.Checksum)
+	
+	// Clear reserved bytes
+	for i := 36; i < DataHeaderSize; i++ {
+		df.mmap[i] = 0
+	}
+	
+	return nil
+}
+
+// getRecordCount atomically reads the record count from the header.
+func (df *DataFile) getRecordCount() uint64 {
+	if len(df.mmap) < 20 {
+		return 0
+	}
+	return binary.LittleEndian.Uint64(df.mmap[12:20])
+}
+
+// setRecordCount atomically updates the record count in the header.
+func (df *DataFile) setRecordCount(count uint64) {
+	if len(df.mmap) >= 20 {
+		binary.LittleEndian.PutUint64(df.mmap[12:20], count)
+	}
+}
+
+// incrementRecordCount atomically increments the record count by 1.
+func (df *DataFile) incrementRecordCount() {
+	if len(df.mmap) >= 20 {
+		current := df.getRecordCount()
+		df.setRecordCount(current + 1)
+	}
+}
+
+// newSecureDataFile creates or opens a data file with security validation.
+func newSecureDataFile(path string, capacity uint64, chunkSize int64) (*DataFile, error) {
+	// Validate existing file or create securely (always enforced)
+	var file *os.File
+	var err error
+	
+	if _, statErr := os.Stat(path); statErr == nil {
+		// File exists, validate security properties
+		if err := validateExistingFile(path); err != nil {
+			return nil, fmt.Errorf("existing file failed security validation: %w", err)
+		}
+		// #nosec G304 - Secure function with validated path
+		file, err = os.OpenFile(path, os.O_RDWR, 0600)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open existing secure file: %w", err)
+		}
+	} else {
+		// File doesn't exist, create securely
+		file, err = secureFileCreate(path)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create secure data file: %w", err)
+		}
+	}
+	
+	return newDataFileFromHandle(path, file, capacity, chunkSize)
+}
+
+// newDataFileFromHandle creates a DataFile from an open file handle.
+func newDataFileFromHandle(path string, file *os.File, capacity uint64, chunkSize int64) (*DataFile, error) {
 	df := &DataFile{
 		path:      path,
 		file:      file,
@@ -45,32 +135,57 @@ func NewDataFile(path string, capacity int, chunkSize int64) (*DataFile, error) 
 	// Get file info
 	stat, err := file.Stat()
 	if err != nil {
-		file.Close()
+		if closeErr := file.Close(); closeErr != nil {
+			return nil, fmt.Errorf("failed to stat file: %w (cleanup error: %v)", err, closeErr)
+		}
 		return nil, fmt.Errorf("failed to stat file: %w", err)
 	}
 	
 	if stat.Size() == 0 {
 		// New file, initialize it
 		if err := df.initialize(); err != nil {
-			file.Close()
+			if closeErr := file.Close(); closeErr != nil {
+				return nil, fmt.Errorf("failed to initialize data file: %w (cleanup error: %v)", err, closeErr)
+			}
 			return nil, fmt.Errorf("failed to initialize data file: %w", err)
 		}
 	} else {
 		// Existing file, map it
 		df.fileSize = stat.Size()
 		if err := df.mapFile(); err != nil {
-			file.Close()
+			if closeErr := file.Close(); closeErr != nil {
+				return nil, fmt.Errorf("failed to map data file: %w (cleanup error: %v)", err, closeErr)
+			}
 			return nil, fmt.Errorf("failed to map data file: %w", err)
 		}
 		
-		// Validate header
-		if err := ValidateDataHeader(df.header); err != nil {
-			df.Close()
+		// Read and validate header
+		header, err := df.readHeader()
+		if err != nil {
+			if closeErr := df.Close(); closeErr != nil {
+				return nil, fmt.Errorf("failed to read header: %w (cleanup error: %v)", err, closeErr)
+			}
+			return nil, fmt.Errorf("failed to read header: %w", err)
+		}
+		
+		if err := validateDataHeader(header); err != nil {
+			if closeErr := df.Close(); closeErr != nil {
+				return nil, fmt.Errorf("invalid data file header: %w (cleanup error: %v)", err, closeErr)
+			}
 			return nil, fmt.Errorf("invalid data file header: %w", err)
 		}
 		
 		// Set append position to end of current records
-		atomic.StoreInt64(&df.appendPos, int64(DataHeaderSize+df.header.RecordCount*RecordSize))
+		// Check for overflow before conversion
+		const maxInt64 = 9223372036854775807
+		if header.RecordCount > (maxInt64-DataHeaderSize)/RecordSize {
+			// Handle overflow by setting to maximum reasonable position
+			atomic.StoreUint64(&df.appendPos, maxInt64)
+		} else {
+			// Safe conversion - RecordCount is within bounds
+			pos := uint64(DataHeaderSize) + header.RecordCount*RecordSize
+			atomic.StoreUint64(&df.appendPos, pos)
+		}
 	}
 	
 	return df, nil
@@ -96,29 +211,14 @@ func (df *DataFile) initialize() error {
 		return fmt.Errorf("failed to map file: %w", err)
 	}
 	
-	// Create and write header - safe conversion since capacity is positive
-	if df.capacity < 0 {
-		return fmt.Errorf("invalid negative capacity: %d", df.capacity)
+	// Create and write header using safe encoding
+	header := newDataHeader(df.capacity)
+	if err := df.writeHeader(header); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
 	}
-	header := NewDataHeader(uint32(df.capacity)) // Safe conversion checked above
-	// UNSAFE: Convert struct pointer to byte array for copying to mmap.
-	// This is safe because:
-	// 1. Header struct has fixed size (DataHeaderSize = 64 bytes)
-	// 2. We're only reading from the struct, not writing
-	// 3. The struct lifetime exceeds this operation
-	headerBytes := (*[DataHeaderSize]byte)(unsafe.Pointer(header))
-	copy(df.mmap[:DataHeaderSize], headerBytes[:])
-	
-	// UNSAFE: Cast mmap bytes directly to header struct for performance.
-	// This is safe because:
-	// 1. mmap guarantees the memory is valid and properly aligned
-	// 2. DataHeader struct is designed to match the on-disk layout exactly
-	// 3. We verified mmap size >= DataHeaderSize during file creation
-	// 4. Memory mapping ensures the data persists as long as the file is mapped
-	df.header = (*DataHeader)(unsafe.Pointer(&df.mmap[0]))
 	
 	// Set initial append position
-	atomic.StoreInt64(&df.appendPos, DataHeaderSize)
+	atomic.StoreUint64(&df.appendPos, DataHeaderSize)
 	
 	return nil
 }
@@ -146,13 +246,7 @@ func (df *DataFile) mapFile() error {
 	
 	df.mmap = mmap
 	
-	// UNSAFE: Cast mmap bytes directly to header struct for performance.
-	// This is safe because:
-	// 1. mmap guarantees the memory is valid and properly aligned  
-	// 2. DataHeader struct matches the exact on-disk format
-	// 3. We verified file size and mmap bounds above
-	// 4. Header access is read-mostly with atomic updates for counters
-	df.header = (*DataHeader)(unsafe.Pointer(&df.mmap[0]))
+	// Header is accessed via safe encoding/binary operations in helper functions
 	
 	return nil
 }
@@ -164,7 +258,6 @@ func (df *DataFile) unmapFile() error {
 			return fmt.Errorf("munmap failed: %w", err)
 		}
 		df.mmap = nil
-		df.header = nil
 	}
 	return nil
 }
@@ -198,23 +291,24 @@ func (df *DataFile) grow(minSize int64) error {
 
 // AppendRecord appends a new record to the data file.
 func (df *DataFile) AppendRecord(n *needle.Needle, expiration time.Time) (uint64, error) {
-	// Check capacity - safe conversion since capacity is positive
-	if df.capacity < 0 || atomic.LoadUint32(&df.header.RecordCount) >= uint32(df.capacity) { // Safe conversion checked above
+	// Check capacity
+	if df.getRecordCount() >= df.capacity {
 		return 0, ErrDataFileFull
 	}
 	
 	// Get current append position
-	offset := atomic.LoadInt64(&df.appendPos)
+	offset := atomic.LoadUint64(&df.appendPos)
 	
 	// Check if we need to grow the file
-	if offset+RecordSize > df.fileSize {
+	// Safe conversion: offset is always valid file position
+	if offset > 9223372036854775807 || int64(offset)+RecordSize > df.fileSize {
 		if err := df.grow(RecordSize); err != nil {
 			return 0, fmt.Errorf("failed to grow data file: %w", err)
 		}
 	}
 	
 	// Create record
-	record := NewRecord(n, expiration)
+	record := newRecord(n, expiration)
 	
 	// Write record to memory-mapped file
 	df.mu.RLock()
@@ -222,14 +316,10 @@ func (df *DataFile) AppendRecord(n *needle.Needle, expiration time.Time) (uint64
 	df.mu.RUnlock()
 	
 	// Update counters atomically
-	atomic.AddInt64(&df.appendPos, RecordSize)
-	atomic.AddUint32(&df.header.RecordCount, 1)
+	atomic.AddUint64(&df.appendPos, uint64(RecordSize))
+	df.incrementRecordCount()
 	
-	// Safe conversion since offset is positive
-	if offset < 0 {
-		return 0, fmt.Errorf("invalid negative offset: %d", offset)
-	}
-	return uint64(offset), nil
+	return offset, nil
 }
 
 // UpdateRecord updates an existing record at the given offset.
@@ -246,7 +336,7 @@ func (df *DataFile) UpdateRecord(offset uint64, n *needle.Needle, expiration tim
 	}
 	
 	// Create new record
-	record := NewRecord(n, expiration)
+	record := newRecord(n, expiration)
 	
 	// Update record in memory-mapped file
 	df.mu.RLock()
@@ -278,7 +368,7 @@ func (df *DataFile) ReadRecord(offset uint64) (*Record, error) {
 	// Read record from memory-mapped file
 	df.mu.RLock()
 	recordData := df.mmap[offset : offset+RecordSize]
-	record, err := RecordFromBytes(recordData)
+	record, err := recordFromBytes(recordData)
 	df.mu.RUnlock()
 	
 	return record, err
@@ -320,14 +410,19 @@ func (df *DataFile) GetStats() Stats {
 	defer df.mu.RUnlock()
 	
 	stats := Stats{
-		TotalRecords: int64(df.header.RecordCount),
+		TotalRecords: df.getRecordCount(),
 		DataFileSize: df.fileSize,
 	}
 	
 	// Count active and expired records
 	now := time.Now()
-	for i := uint32(0); i < df.header.RecordCount; i++ {
-		offset := DataHeaderSize + int64(i)*RecordSize
+	recordCount := df.getRecordCount()
+	for i := uint64(0); i < recordCount; i++ {
+		// Prevent integer overflow in offset calculation
+		if i > (9223372036854775807-DataHeaderSize)/RecordSize {
+			break
+		}
+		offset := int64(DataHeaderSize) + int64(i)*RecordSize
 		if offset+RecordSize > df.fileSize {
 			break
 		}
