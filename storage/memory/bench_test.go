@@ -21,7 +21,7 @@ func BenchmarkMemoryStore_Set(b *testing.B) {
 	for i := range payload {
 		payload[i] = byte(i % 256)
 	}
-	
+
 	testNeedle, err := needle.New(payload)
 	if err != nil {
 		b.Fatalf("Failed to create test needle: %v", err)
@@ -51,7 +51,7 @@ func BenchmarkMemoryStore_Get(b *testing.B) {
 	for i := range payload {
 		payload[i] = byte(i % 256)
 	}
-	
+
 	testNeedle, err := needle.New(payload)
 	if err != nil {
 		b.Fatalf("Failed to create test needle: %v", err)
@@ -88,7 +88,7 @@ func BenchmarkMemoryStore_SetGet_Mixed(b *testing.B) {
 	for i := range payload {
 		payload[i] = byte(i % 256)
 	}
-	
+
 	testNeedle, err := needle.New(payload)
 	if err != nil {
 		b.Fatalf("Failed to create test needle: %v", err)

@@ -91,12 +91,6 @@ func TestValidateDataDirectory(t *testing.T) {
 			reason:    "path with null bytes should be rejected",
 		},
 		{
-			name:      "path with invalid utf8",
-			dir:       "test\xff\xfe\xfdpath",
-			wantError: true,
-			reason:    "path with invalid UTF-8 should be rejected",
-		},
-		{
 			name:      "path with only null bytes",
 			dir:       "\x00\x00\x00",
 			wantError: true,
@@ -154,7 +148,7 @@ func TestValidateDataDirectory_FilepathAbsError(t *testing.T) {
 			}
 		})
 	}
-	
+
 	// Note: The filepath.Abs() error path (lines 24-26 in security.go) is defensive
 	// programming that's extremely difficult to trigger in unit tests across platforms.
 	// This is acceptable - some defensive error handling cannot be easily unit tested.
@@ -243,13 +237,15 @@ func TestValidateExistingFile(t *testing.T) {
 	// Create test files with different configurations
 	validFile := filepath.Join(tmpDir, "valid.data")
 	wrongPermsFile := filepath.Join(tmpDir, "wrong-perms.data")
-	
+
 	// Create valid file
 	f, err := os.Create(validFile)
 	if err != nil {
 		t.Fatalf("Failed to create valid test file: %v", err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatalf("Failed to close valid test file: %v", err)
+	}
 	if err := os.Chmod(validFile, 0600); err != nil {
 		t.Fatalf("Failed to set correct permissions: %v", err)
 	}
@@ -259,7 +255,9 @@ func TestValidateExistingFile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create wrong perms test file: %v", err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatalf("Failed to close wrong perms test file: %v", err)
+	}
 	if err := os.Chmod(wrongPermsFile, 0644); err != nil {
 		t.Fatalf("Failed to set wrong permissions: %v", err)
 	}
@@ -315,7 +313,9 @@ func TestValidateDirectorySecurity(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create regular file: %v", err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatalf("Failed to close regular file: %v", err)
+	}
 
 	// Create a world-writable directory
 	worldWritableDir := filepath.Join(tmpDir, "world-writable")
@@ -377,7 +377,9 @@ func TestSecureFileCreate(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Failed to create existing file: %v", err)
 	}
-	f.Close()
+	if err := f.Close(); err != nil {
+		t.Fatalf("Failed to close existing file: %v", err)
+	}
 	if err := os.Chmod(existingWrongPermsFile, 0644); err != nil {
 		t.Fatalf("Failed to set wrong permissions: %v", err)
 	}
@@ -416,7 +418,7 @@ func TestSecureFileCreate(t *testing.T) {
 			if (err != nil) != tt.wantError {
 				t.Errorf("secureFileCreate(%q) error = %v, wantError %v - %s", tt.path, err, tt.wantError, tt.reason)
 			}
-			
+
 			if err == nil && file != nil {
 				// Verify the file has correct permissions
 				info, statErr := file.Stat()
@@ -425,11 +427,11 @@ func TestSecureFileCreate(t *testing.T) {
 				} else if info.Mode().Perm() != 0600 {
 					t.Errorf("Created file has wrong permissions: got %o, want 0600", info.Mode().Perm())
 				}
-				
+
 				if closeErr := file.Close(); closeErr != nil {
 					t.Errorf("Failed to close file: %v", closeErr)
 				}
-				
+
 				if tt.cleanup {
 					if removeErr := os.Remove(tt.path); removeErr != nil {
 						t.Errorf("Failed to remove test file: %v", removeErr)

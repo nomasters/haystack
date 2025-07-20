@@ -11,19 +11,19 @@ const (
 	// File format constants
 	DataMagic  = "HAYSTDAT" // Data file magic number
 	IndexMagic = "HAYSTIDX" // Index file magic number
-	
+
 	// Version information
 	FormatVersion = uint32(2) // Bumped to v2 for uint64 capacity/count fields
-	
+
 	// Record sizes
 	RecordSize      = 208 // 192 needle + 8 expiration + 8 flags
 	IndexEntrySize  = 40  // 32 hash + 8 offset
 	DataHeaderSize  = 64  // Data file header size
 	IndexHeaderSize = 64  // Index file header size
-	
+
 	// Flag bits
 	ActiveFlag = uint64(1 << 0) // Record is active (not deleted)
-	
+
 	// Default capacities
 	DefaultMaxRecords = 2000000
 	DefaultMaxIndex   = 2000000
@@ -31,24 +31,24 @@ const (
 
 // DataHeader represents the header of a data file.
 type DataHeader struct {
-	Magic       [8]byte   // "HAYSTDAT"
-	Version     uint32    // Format version
-	RecordCount uint64    // Number of records
-	Capacity    uint64    // Maximum records
-	RecordSize  uint32    // Size of each record (should be 208)
-	Checksum    uint32    // Header checksum
-	Reserved    [28]byte  // Future expansion (reduced to accommodate larger fields)
+	Magic       [8]byte  // "HAYSTDAT"
+	Version     uint32   // Format version
+	RecordCount uint64   // Number of records
+	Capacity    uint64   // Maximum records
+	RecordSize  uint32   // Size of each record (should be 208)
+	Checksum    uint32   // Header checksum
+	Reserved    [28]byte // Future expansion (reduced to accommodate larger fields)
 }
 
 // IndexHeader represents the header of an index file.
 type IndexHeader struct {
-	Magic       [8]byte   // "HAYSTIDX"
-	Version     uint32    // Format version
-	EntryCount  uint64    // Number of index entries
-	Capacity    uint64    // Maximum entries
-	EntrySize   uint32    // Size of each entry (should be 40)
-	Checksum    uint32    // Header checksum
-	Reserved    [28]byte  // Future expansion (reduced to accommodate larger fields)
+	Magic      [8]byte  // "HAYSTIDX"
+	Version    uint32   // Format version
+	EntryCount uint64   // Number of index entries
+	Capacity   uint64   // Maximum entries
+	EntrySize  uint32   // Size of each entry (should be 40)
+	Checksum   uint32   // Header checksum
+	Reserved   [28]byte // Future expansion (reduced to accommodate larger fields)
 }
 
 // Record represents a single record in the data file.
@@ -59,10 +59,10 @@ type Record struct {
 // newRecord creates a new record from a needle and expiration time.
 func newRecord(n *needle.Needle, expiration time.Time) *Record {
 	data := make([]byte, RecordSize)
-	
+
 	// Copy needle data (first 192 bytes)
 	copy(data[0:192], n.Bytes())
-	
+
 	// Set expiration (next 8 bytes)
 	expNanos := expiration.UnixNano()
 	// Safely convert int64 to uint64, clamping negative values to 0
@@ -71,10 +71,10 @@ func newRecord(n *needle.Needle, expiration time.Time) *Record {
 	} else {
 		binary.LittleEndian.PutUint64(data[192:200], uint64(expNanos))
 	}
-	
+
 	// Set flags (last 8 bytes) - mark as active
 	binary.LittleEndian.PutUint64(data[200:208], ActiveFlag)
-	
+
 	return &Record{data: data}
 }
 
@@ -83,11 +83,11 @@ func recordFromBytes(data []byte) (*Record, error) {
 	if len(data) != RecordSize {
 		return nil, ErrInvalidRecord
 	}
-	
+
 	// Make a copy to ensure we own the data
 	recordData := make([]byte, RecordSize)
 	copy(recordData, data)
-	
+
 	return &Record{data: recordData}, nil
 }
 
@@ -139,7 +139,6 @@ func (r *Record) Bytes() []byte {
 	return r.data
 }
 
-
 // Stats provides statistics about the storage.
 type Stats struct {
 	TotalRecords   uint64 // Total number of records
@@ -177,15 +176,15 @@ func validateDataHeader(header *DataHeader) error {
 	if string(header.Magic[:]) != DataMagic {
 		return ErrCorruptedFile
 	}
-	
+
 	if header.Version != FormatVersion {
 		return ErrIncompatibleVersion
 	}
-	
+
 	if header.RecordSize != RecordSize {
 		return ErrIncompatibleVersion
 	}
-	
+
 	return nil
 }
 
@@ -194,14 +193,14 @@ func validateIndexHeader(header *IndexHeader) error {
 	if string(header.Magic[:]) != IndexMagic {
 		return ErrCorruptedFile
 	}
-	
+
 	if header.Version != FormatVersion {
 		return ErrIncompatibleVersion
 	}
-	
+
 	if header.EntrySize != IndexEntrySize {
 		return ErrIncompatibleVersion
 	}
-	
+
 	return nil
 }

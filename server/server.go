@@ -15,13 +15,13 @@ import (
 // Server implements a high-performance UDP server for Haystack operations.
 // It combines transport and business logic for maximum efficiency.
 type Server struct {
-	storage  storage.GetSetCloser
-	logger   logger.Logger
-	conn     net.PacketConn
-	bufPool  *sync.Pool
-	ctx      context.Context
-	cancel   context.CancelFunc
-	done     chan struct{}
+	storage storage.GetSetCloser
+	logger  logger.Logger
+	conn    net.PacketConn
+	bufPool *sync.Pool
+	ctx     context.Context
+	cancel  context.CancelFunc
+	done    chan struct{}
 }
 
 // Config holds configuration options for the Haystack server.
@@ -37,15 +37,15 @@ func New(config *Config) *Server {
 	if config == nil {
 		config = &Config{}
 	}
-	
+
 	// Use NoOp logger if none provided
 	log := config.Logger
 	if log == nil {
 		log = logger.NewNoOp()
 	}
-	
+
 	ctx, cancel := context.WithCancel(context.Background())
-	
+
 	return &Server{
 		storage: config.Storage,
 		logger:  log,
@@ -68,17 +68,17 @@ func (s *Server) ListenAndServe(address string) error {
 	if s.storage == nil {
 		return fmt.Errorf("no storage configured")
 	}
-	
+
 	conn, err := net.ListenPacket("udp", address)
 	if err != nil {
 		return fmt.Errorf("failed to listen on %s: %w", address, err)
 	}
-	
+
 	s.conn = conn
-	
+
 	// Start the main processing loop
 	go s.serve()
-	
+
 	// Wait for shutdown
 	<-s.done
 	return nil
@@ -88,14 +88,14 @@ func (s *Server) ListenAndServe(address string) error {
 func (s *Server) Shutdown(ctx context.Context) error {
 	// Signal shutdown
 	s.cancel()
-	
+
 	// Close the connection to unblock ReadFrom
 	if s.conn != nil {
 		if err := s.conn.Close(); err != nil {
 			s.logger.Errorf("Failed to close connection during shutdown: %v", err)
 		}
 	}
-	
+
 	// Wait for serve loop to finish or timeout
 	select {
 	case <-s.done:
@@ -115,7 +115,7 @@ func (s *Server) serve() {
 			}
 		}
 	}()
-	
+
 	for {
 		select {
 		case <-s.ctx.Done():
@@ -139,12 +139,12 @@ func (s *Server) processPacket() error {
 		//nolint:staticcheck // SA6002: slice argument is intentional for buffer pools
 		s.bufPool.Put(buf[:cap(buf)])
 	}()
-	
+
 	// Set a read timeout to prevent blocking forever
 	if err := s.conn.SetReadDeadline(time.Now().Add(100 * time.Millisecond)); err != nil {
 		return fmt.Errorf("failed to set read deadline: %w", err)
 	}
-	
+
 	n, addr, err := s.conn.ReadFrom(buf)
 	if err != nil {
 		// Check if it's a timeout error, which is expected
@@ -153,7 +153,7 @@ func (s *Server) processPacket() error {
 		}
 		return err
 	}
-	
+
 	// Process based on packet size
 	switch n {
 	case needle.HashLength:
@@ -173,13 +173,13 @@ func (s *Server) handleGet(hashBytes []byte, addr net.Addr) error {
 	// Convert bytes to hash array
 	var hash needle.Hash
 	copy(hash[:], hashBytes)
-	
+
 	// Retrieve needle from storage
 	n, err := s.storage.Get(hash)
 	if err != nil {
 		return fmt.Errorf("failed to get needle: %w", err)
 	}
-	
+
 	// Send the full needle as response
 	_, err = s.conn.WriteTo(n.Bytes(), addr)
 	return err
@@ -193,12 +193,12 @@ func (s *Server) handleSet(needleBytes []byte, _ net.Addr) error {
 	if err != nil {
 		return fmt.Errorf("invalid needle: %w", err)
 	}
-	
+
 	// Store the needle
 	if err := s.storage.Set(n); err != nil {
 		return fmt.Errorf("failed to store needle: %w", err)
 	}
-	
+
 	// No response for SET operations (by design)
 	return nil
 }

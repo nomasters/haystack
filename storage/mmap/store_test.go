@@ -381,7 +381,7 @@ func BenchmarkStore_Set(b *testing.B) {
 		// Create unique needle for each iteration
 		payload[0] = byte(i)
 		n, _ := needle.New(payload)
-		
+
 		err := store.Set(n)
 		if err != nil {
 			b.Fatalf("Set failed: %v", err)
@@ -848,7 +848,7 @@ func TestStore_Cleanup(t *testing.T) {
 	}()
 
 	config := createTestConfig(tmpDir)
-	config.TTL = 50 * time.Millisecond  // Very short TTL
+	config.TTL = 50 * time.Millisecond              // Very short TTL
 	config.CleanupInterval = 100 * time.Millisecond // Short cleanup interval
 
 	ctx := context.Background()
@@ -905,7 +905,7 @@ func TestStore_Compaction(t *testing.T) {
 	}()
 
 	config := createTestConfig(tmpDir)
-	config.CompactThreshold = 0.5 // Compact when 50% of records are deleted
+	config.CompactThreshold = 0.5      // Compact when 50% of records are deleted
 	config.TTL = 50 * time.Millisecond // Short TTL
 
 	ctx := context.Background()
@@ -1068,7 +1068,7 @@ func TestSecurityFunctions(t *testing.T) {
 	t.Run("SecureFileCreateEdgeCases", func(t *testing.T) {
 		// Test secureFileCreate with various conditions
 		testPath := filepath.Join(tmpDir, "test-edge-case.data")
-		
+
 		file, err := secureFileCreate(testPath)
 		if err != nil {
 			t.Errorf("secureFileCreate failed: %v", err)
@@ -1078,7 +1078,7 @@ func TestSecurityFunctions(t *testing.T) {
 					t.Errorf("Failed to close file: %v", err)
 				}
 			}()
-			
+
 			// Verify file exists and has correct permissions
 			info, err := os.Stat(testPath)
 			if err != nil {
@@ -1086,7 +1086,7 @@ func TestSecurityFunctions(t *testing.T) {
 			} else if info.Mode().Perm() != 0600 {
 				t.Errorf("Expected permissions 0600, got %o", info.Mode().Perm())
 			}
-			
+
 			func() {
 				if err := os.Remove(testPath); err != nil {
 					t.Errorf("Failed to remove test file: %v", err)
@@ -1137,7 +1137,7 @@ func TestDataFile_EdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create invalid file: %v", err)
 		}
-		
+
 		// Write invalid header
 		_, err = file.Write([]byte("INVALID"))
 		if err != nil {
@@ -1166,7 +1166,7 @@ func TestDataFile_EdgeCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Failed to create invalid file: %v", err)
 		}
-		
+
 		// Write invalid header
 		_, err = file.Write([]byte("INVALID"))
 		if err != nil {
@@ -1326,7 +1326,7 @@ func TestCleanup_EdgeCases(t *testing.T) {
 	store.performCleanup()
 
 	stats := store.dataFile.GetStats()
-	t.Logf("After cleanup with compaction: Total=%d, Active=%d, Expired=%d", 
+	t.Logf("After cleanup with compaction: Total=%d, Active=%d, Expired=%d",
 		stats.TotalRecords, stats.ActiveRecords, stats.ExpiredRecords)
 }
 
@@ -1363,7 +1363,7 @@ func TestSecurity_ErrorConditions(t *testing.T) {
 			"..\\..\\..\\windows\\system32\\config",
 			"../../secret.txt",
 		}
-		
+
 		for _, maliciousPath := range maliciousPaths {
 			_, err = buildSecureDataPath(tmpDir, maliciousPath)
 			if err == nil {
@@ -1741,7 +1741,7 @@ func TestPerformCleanup_Coverage(t *testing.T) {
 
 	config := createTestConfig(tmpDir)
 	config.TTL = 10 * time.Millisecond // Very short TTL
-	config.CompactThreshold = 0.8 // High threshold to test different cleanup path
+	config.CompactThreshold = 0.8      // High threshold to test different cleanup path
 
 	ctx := context.Background()
 	store, err := New(ctx, config)
@@ -1780,7 +1780,7 @@ func TestPerformCleanup_Coverage(t *testing.T) {
 
 	// Check that cleanup ran
 	stats := store.dataFile.GetStats()
-	t.Logf("After performCleanup: Total=%d, Active=%d, Expired=%d", 
+	t.Logf("After performCleanup: Total=%d, Active=%d, Expired=%d",
 		stats.TotalRecords, stats.ActiveRecords, stats.ExpiredRecords)
 }
 
@@ -1962,7 +1962,7 @@ func TestComplexScenarios(t *testing.T) {
 	for i := 0; i < 50; i++ {
 		payload := make([]byte, needle.PayloadLength)
 		for j := range payload {
-			payload[j] = byte((i*j) % 256)
+			payload[j] = byte((i * j) % 256)
 		}
 
 		testNeedle, err := needle.New(payload)
@@ -1999,6 +1999,6 @@ func TestComplexScenarios(t *testing.T) {
 
 	// Check final stats
 	stats := store.dataFile.GetStats()
-	t.Logf("Final stats: Total=%d, Active=%d, Expired=%d, FileSize=%d", 
+	t.Logf("Final stats: Total=%d, Active=%d, Expired=%d, FileSize=%d",
 		stats.TotalRecords, stats.ActiveRecords, stats.ExpiredRecords, stats.DataFileSize)
 }

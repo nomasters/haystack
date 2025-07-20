@@ -140,7 +140,7 @@ func validateFileOwnership(path string, info os.FileInfo) error {
 }
 
 // secureFileCreate creates a file with secure permissions and validates ownership.
-func secureFileCreate(path string) (*os.File, error){
+func secureFileCreate(path string) (*os.File, error) {
 	// Validate path is secure
 	dir := filepath.Dir(path)
 	if err := validateDataDirectory(dir); err != nil {

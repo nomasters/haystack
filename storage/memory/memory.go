@@ -22,7 +22,6 @@ type entry struct {
 	expiration time.Time
 }
 
-
 // Store is a struct that holds the in memory storage state
 type Store struct {
 	sync.RWMutex

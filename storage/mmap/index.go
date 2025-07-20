@@ -27,21 +27,21 @@ func (idx *Index) readHeader() (*IndexHeader, error) {
 	if len(idx.mmap) < IndexHeaderSize {
 		return nil, fmt.Errorf("file too small for header")
 	}
-	
+
 	header := &IndexHeader{}
-	
+
 	// Read magic bytes
 	copy(header.Magic[:], idx.mmap[0:8])
-	
+
 	// Read other fields using encoding/binary
 	header.Version = binary.LittleEndian.Uint32(idx.mmap[8:12])
 	header.EntryCount = binary.LittleEndian.Uint64(idx.mmap[12:20])
 	header.Capacity = binary.LittleEndian.Uint64(idx.mmap[20:28])
 	header.EntrySize = binary.LittleEndian.Uint32(idx.mmap[28:32])
 	header.Checksum = binary.LittleEndian.Uint32(idx.mmap[32:36])
-	
+
 	// Reserved bytes are left as zero
-	
+
 	return header, nil
 }
 
@@ -50,22 +50,22 @@ func (idx *Index) writeHeader(header *IndexHeader) error {
 	if len(idx.mmap) < IndexHeaderSize {
 		return fmt.Errorf("file too small for header")
 	}
-	
+
 	// Write magic bytes
 	copy(idx.mmap[0:8], header.Magic[:])
-	
+
 	// Write other fields using encoding/binary
 	binary.LittleEndian.PutUint32(idx.mmap[8:12], header.Version)
 	binary.LittleEndian.PutUint64(idx.mmap[12:20], header.EntryCount)
 	binary.LittleEndian.PutUint64(idx.mmap[20:28], header.Capacity)
 	binary.LittleEndian.PutUint32(idx.mmap[28:32], header.EntrySize)
 	binary.LittleEndian.PutUint32(idx.mmap[32:36], header.Checksum)
-	
+
 	// Clear reserved bytes
 	for i := 36; i < IndexHeaderSize; i++ {
 		idx.mmap[i] = 0
 	}
-	
+
 	return nil
 }
 
@@ -98,11 +98,11 @@ func (idx *Index) readEntry(pos int) (needle.Hash, uint64, error) {
 	if offset+IndexEntrySize > len(idx.mmap) {
 		return needle.Hash{}, 0, fmt.Errorf("entry position out of bounds")
 	}
-	
+
 	var hash needle.Hash
 	copy(hash[:], idx.mmap[offset:offset+32])
-	offsetValue := binary.LittleEndian.Uint64(idx.mmap[offset+32:offset+40])
-	
+	offsetValue := binary.LittleEndian.Uint64(idx.mmap[offset+32 : offset+40])
+
 	return hash, offsetValue, nil
 }
 
@@ -112,10 +112,10 @@ func (idx *Index) writeEntry(pos int, hash needle.Hash, offset uint64) error {
 	if entryOffset+IndexEntrySize > len(idx.mmap) {
 		return fmt.Errorf("entry position out of bounds")
 	}
-	
+
 	copy(idx.mmap[entryOffset:entryOffset+32], hash[:])
 	binary.LittleEndian.PutUint64(idx.mmap[entryOffset+32:entryOffset+40], offset)
-	
+
 	return nil
 }
 
@@ -124,7 +124,7 @@ func newSecureIndex(path string, capacity uint64) (*Index, error) {
 	// Validate existing file or create securely (always enforced)
 	var file *os.File
 	var err error
-	
+
 	if _, statErr := os.Stat(path); statErr == nil {
 		// File exists, validate security properties
 		if err := validateExistingFile(path); err != nil {
@@ -142,7 +142,7 @@ func newSecureIndex(path string, capacity uint64) (*Index, error) {
 			return nil, fmt.Errorf("failed to create secure index file: %w", err)
 		}
 	}
-	
+
 	return newIndexFromHandle(path, file, capacity)
 }
 
@@ -189,7 +189,7 @@ func newIndexFromHandle(path string, file *os.File, capacity uint64) (*Index, er
 			}
 			return nil, fmt.Errorf("failed to read header: %w", err)
 		}
-		
+
 		if err := validateIndexHeader(header); err != nil {
 			if closeErr := idx.Close(); closeErr != nil {
 				return nil, fmt.Errorf("invalid index file header: %w (cleanup error: %v)", err, closeErr)
