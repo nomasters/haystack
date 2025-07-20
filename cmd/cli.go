@@ -50,7 +50,7 @@ Use "haystack <command> --help" for more information about a command.
 // runServer handles the server subcommand
 func runServer(args []string) {
 	fs := flag.NewFlagSet("server", flag.ExitOnError)
-	
+
 	// Define flags
 	port := fs.String("port", "1337", "Port for the server listener")
 	fs.StringVar(port, "p", "1337", "Port for the server listener (shorthand)")
@@ -91,7 +91,7 @@ DESCRIPTION:
 
 	// Build address
 	addr := *host + ":" + *port
-	
+
 	// Set up logger based on quiet flag
 	var log logger.Logger
 	if *quiet {
@@ -100,46 +100,46 @@ DESCRIPTION:
 		log = logger.New()
 		fmt.Printf("listening on: %s\n", addr)
 	}
-	
+
 	// Create storage backend (memory storage with 24h TTL, 2M max items)
 	ctx := context.Background()
 	storage := memory.New(ctx, 24*time.Hour, 2000000)
-	
+
 	// Create UDP server
 	srv := server.New(&server.Config{
 		Storage: storage,
 		Logger:  log,
 	})
-	
+
 	// Handle graceful shutdown
 	go func() {
 		if err := srv.ListenAndServe(addr); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
 	}()
-	
+
 	// Wait for interrupt signal
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt)
 	<-sigChan
-	
+
 	if !*quiet {
 		fmt.Println("\nShutting down server...")
 	}
-	
+
 	// Shutdown with timeout
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	
+
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Errorf("Error during shutdown: %v", err)
 	}
-	
+
 	// Close storage
 	if err := storage.Close(); err != nil {
 		log.Errorf("Error closing storage: %v", err)
 	}
-	
+
 	if !*quiet {
 		fmt.Println("Server stopped")
 	}
