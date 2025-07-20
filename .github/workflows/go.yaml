@@ -18,7 +18,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.24"
+          go-version: "1.24.5"
 
       - name: Check formatting
         run: |
@@ -28,12 +28,6 @@ jobs:
             git diff
             exit 1
           fi
-
-      - name: Install golangci-lint
-        uses: golangci/golangci-lint-action@v8
-        with:
-          version: latest
-          args: --timeout=5m
 
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
@@ -49,7 +43,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: "1.24"
+          go-version: "1.24.5"
 
       - name: Test
         run: make test
