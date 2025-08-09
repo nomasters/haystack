@@ -29,6 +29,15 @@ jobs:
             exit 1
           fi
 
+      - name: Run Go vet
+        run: make lint
+
+      - name: Run Shellcheck
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y shellcheck
+          make shellcheck
+
       - name: Run Gosec Security Scanner
         uses: securego/gosec@master
         with:

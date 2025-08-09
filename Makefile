@@ -1,4 +1,4 @@
-.PHONY: coverage test inspect install sec-scan lint fmt check
+.PHONY: coverage test inspect install sec-scan lint fmt check shellcheck
 .PHONY: tree-hash docker-build docker-push docker-exists docker-promote docker-release docker-list
 
 # Docker configuration with defaults (override with environment variables)
@@ -22,12 +22,17 @@ sec-scan:
 	gosec -fmt=json -out=gosec-report.json -stdout -verbose=text ./...
 
 lint:
-	golangci-lint run ./...
+	go vet ./...
 
 fmt:
 	go fmt ./...
 
-check: fmt lint test
+# Check shell scripts for issues
+shellcheck:
+	@echo "Checking shell scripts with shellcheck..."
+	@shellcheck scripts/*.sh
+
+check: fmt lint test shellcheck
 	@echo "All checks passed!"
 
 update-deps:

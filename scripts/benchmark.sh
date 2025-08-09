@@ -37,7 +37,10 @@ run_benchmark() {
         # Extract key metrics
         echo "Key Results:" >> "$output_file"
         echo "============" >> "$output_file"
-        grep -E "(ops/sec|ns/op|B/op|allocs/op)" "$output_file" | tail -10 >> "$output_file" || true
+        # Avoid reading and writing same file in pipeline - use temp file
+        grep -E "(ops/sec|ns/op|B/op|allocs/op)" "$output_file" | tail -10 > "$output_file.tmp" || true
+        cat "$output_file.tmp" >> "$output_file"
+        rm -f "$output_file.tmp"
     else
         echo -e "${RED}✗ $name failed${NC}"
         echo "Error details saved to $output_file"
@@ -85,7 +88,7 @@ cat > "$SUMMARY_FILE" << EOF
 
 ## Test Environment
 - **CPU:** $(sysctl -n machdep.cpu.brand_string 2>/dev/null || grep "model name" /proc/cpuinfo | head -1 | cut -d: -f2 | xargs || echo "Unknown")
-- **Memory:** $(echo $(($(sysctl -n hw.memsize 2>/dev/null || grep MemTotal /proc/meminfo | awk '{print $2 * 1024}' || echo 0) / 1024 / 1024 / 1024)))GB
+- **Memory:** $(($(sysctl -n hw.memsize 2>/dev/null || grep MemTotal /proc/meminfo | awk '{print $2 * 1024}' || echo 0) / 1024 / 1024 / 1024))GB
 - **Go Version:** $(go version)
 
 ## Key Performance Metrics
@@ -164,11 +167,13 @@ if [ "$MIN_LATENCY" != "0" ]; then
     echo "- **Lowest Latency:** ${MIN_LATENCY} ns/op" >> "$SUMMARY_FILE"
 fi
 
-echo "" >> "$SUMMARY_FILE"
-echo "## Files Generated" >> "$SUMMARY_FILE"
-echo "" >> "$SUMMARY_FILE"
-echo "- Individual benchmark results: \`${RESULTS_DIR}/*.txt\`" >> "$SUMMARY_FILE"
-echo "- This summary: \`${SUMMARY_FILE}\`" >> "$SUMMARY_FILE"
+{
+    echo ""
+    echo "## Files Generated"
+    echo ""
+    echo "- Individual benchmark results: \`${RESULTS_DIR}/*.txt\`"
+    echo "- This summary: \`${SUMMARY_FILE}\`"
+} >> "$SUMMARY_FILE"
 
 echo -e "${GREEN}✓ Benchmark suite completed!${NC}"
 echo -e "${BLUE}Summary report: $SUMMARY_FILE${NC}"

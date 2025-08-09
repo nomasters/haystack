@@ -41,4 +41,3 @@ COMMANDS:
 Use "haystack <command> --help" for more information about a command.
 `)
 }
-

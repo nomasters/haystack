@@ -40,7 +40,7 @@ calculate_tree_hash() {
     done
     
     # Remove duplicates and sort for deterministic output
-    files=$(echo $files | tr ' ' '\n' | sort -u | tr '\n' ' ')
+    files=$(echo "$files" | tr ' ' '\n' | sort -u | tr '\n' ' ')
     
     if [ -z "$files" ]; then
         echo "Error: No source files found" >&2
@@ -49,7 +49,7 @@ calculate_tree_hash() {
     
     # Calculate hash using git's internal tree hashing
     # This gives us a content-based hash that's consistent
-    echo $files | tr ' ' '\n' | xargs git hash-object | git hash-object --stdin
+    echo "$files" | tr ' ' '\n' | xargs git hash-object | git hash-object --stdin
 }
 
 # Main execution
@@ -61,7 +61,8 @@ main() {
     fi
     
     # Calculate and output the hash (first 12 characters for brevity)
-    local full_hash=$(calculate_tree_hash)
+    local full_hash
+    full_hash=$(calculate_tree_hash)
     echo "${full_hash:0:12}"
 }
 

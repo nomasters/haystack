@@ -228,7 +228,7 @@ make docker-exists
 make docker-promote TAGS="v0.1.0"
 ```
 
-### Testing
+### Testing & Quality Checks
 
 ```bash
 # Run tests with race detection
@@ -236,6 +236,14 @@ make test
 
 # Generate coverage report
 make coverage
+
+# Run all quality checks (fmt, vet, test, shellcheck)
+make check
+
+# Individual checks
+make fmt         # Format Go code
+make lint        # Run go vet
+make shellcheck  # Check shell scripts
 
 # Run specific tests
 go test -v -run TestName ./path/to/package
