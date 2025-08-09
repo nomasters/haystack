@@ -47,11 +47,6 @@ get_commit_sha() {
     git rev-parse --short HEAD
 }
 
-# Get the current branch name
-get_branch_name() {
-    git rev-parse --abbrev-ref HEAD
-}
-
 # Check if a Docker image exists in the registry
 image_exists() {
     local image="$1"
@@ -68,15 +63,13 @@ image_exists() {
 build_image() {
     local tree_hash="$1"
     local commit_sha="$2"
-    local branch="$3"
     
     local tree_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:tree-${tree_hash}"
-    local sha_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:sha-${commit_sha}"
-    local branch_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:${branch}"
+    local commit_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:commit-${commit_sha}"
     
     log_info "Building multi-platform image..."
     log_info "Platforms: ${DOCKER_PLATFORMS}"
-    log_info "Tags: tree-${tree_hash}, sha-${commit_sha}, ${branch}"
+    log_info "Tags: tree-${tree_hash}, commit-${commit_sha}"
     
     # Ensure buildx is available
     if ! docker buildx version >/dev/null 2>&1; then
@@ -98,8 +91,7 @@ build_image() {
     local build_args=(
         "--platform=${DOCKER_PLATFORMS}"
         "--tag=${tree_tag}"
-        "--tag=${sha_tag}"
-        "--tag=${branch_tag}"
+        "--tag=${commit_tag}"
     )
     
     # Add push flag if requested
@@ -108,7 +100,7 @@ build_image() {
     else
         build_args+=("--load")
         log_warn "Building for local platform only (--load mode). Set DOCKER_PUSH=true for multi-platform push."
-        build_args=("--tag=${tree_tag}" "--tag=${sha_tag}" "--tag=${branch_tag}")
+        build_args=("--tag=${tree_tag}" "--tag=${commit_tag}")
     fi
     
     docker buildx build "${build_args[@]}" .
@@ -120,26 +112,20 @@ build_image() {
 add_tags() {
     local source_tag="$1"
     local commit_sha="$2"
-    local branch="$3"
     
-    local sha_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:sha-${commit_sha}"
-    local branch_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:${branch}"
+    local commit_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:commit-${commit_sha}"
     
-    log_info "Image already exists with tree hash, adding new tags..."
+    log_info "Image already exists with tree hash, adding new commit tag..."
     
     if [ "${DOCKER_PUSH}" = "true" ]; then
         # Pull the existing image
         docker pull "$source_tag"
         
         # Tag with commit SHA
-        docker tag "$source_tag" "$sha_tag"
-        docker push "$sha_tag"
+        docker tag "$source_tag" "$commit_tag"
+        docker push "$commit_tag"
         
-        # Tag with branch name
-        docker tag "$source_tag" "$branch_tag"
-        docker push "$branch_tag"
-        
-        log_info "Tags added and pushed: sha-${commit_sha}, ${branch}"
+        log_info "Tag added and pushed: commit-${commit_sha}"
     else
         log_info "Skipping tag operations (DOCKER_PUSH=false)"
     fi
@@ -183,25 +169,22 @@ main() {
     # Get current hashes
     local tree_hash
     local commit_sha
-    local branch
     
     tree_hash=$(get_tree_hash)
     commit_sha=$(get_commit_sha)
-    branch=$(get_branch_name)
     
     log_info "Tree hash: ${tree_hash}"
     log_info "Commit SHA: ${commit_sha}"
-    log_info "Branch: ${branch}"
     
     # Check if image with tree hash already exists
     local tree_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:tree-${tree_hash}"
     
     if image_exists "$tree_tag"; then
         log_info "Image already exists for tree hash: ${tree_hash}"
-        add_tags "$tree_tag" "$commit_sha" "$branch"
+        add_tags "$tree_tag" "$commit_sha"
     else
         log_info "No existing image for tree hash: ${tree_hash}"
-        build_image "$tree_hash" "$commit_sha" "$branch"
+        build_image "$tree_hash" "$commit_sha"
     fi
     
     log_info "Done!"

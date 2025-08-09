@@ -95,10 +95,10 @@ list_tags() {
 # Find image by commit SHA
 find_image_by_commit() {
     local commit_sha="$1"
-    local sha_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:sha-${commit_sha}"
+    local commit_tag="${DOCKER_REGISTRY}/${DOCKER_REPO}:commit-${commit_sha}"
     
-    if image_exists "$sha_tag"; then
-        echo "$sha_tag"
+    if image_exists "$commit_tag"; then
+        echo "$commit_tag"
         return 0
     else
         return 1
@@ -134,7 +134,7 @@ main() {
                 log_info "Found image for commit $commit_sha: $source_image"
                 promote_image "$source_image" "$@"
             else
-                log_error "No image found for commit SHA: $commit_sha"
+                log_error "No image found for commit: $commit_sha"
                 log_error "Build the image first with: make docker-build"
                 exit 1
             fi

@@ -166,9 +166,8 @@ docker run -p 1337:1337/udp nomasters/haystack:v0.1.0 serve -H 0.0.0.0 -p 1337
 
 #### Available Tags
 
-- `sha-<commit>`: Specific commit SHA
+- `commit-<hash>`: Specific Git commit
 - `tree-<hash>`: Content-based hash (same source = same tag)
-- `main`: Latest build from main branch
 - `v0.1.0`: Specific release version (immutable)
 
 ### Deploy to Fly.io
