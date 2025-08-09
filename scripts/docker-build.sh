@@ -85,11 +85,21 @@ build_image() {
     fi
     
     # Create or use existing buildx builder
-    if ! docker buildx ls | grep -q "haystack-builder"; then
+    # First check if builder exists and is valid
+    if docker buildx ls | grep -q "haystack-builder"; then
+        # Try to inspect the builder to see if it's valid
+        if docker buildx inspect haystack-builder >/dev/null 2>&1; then
+            log_info "Using existing buildx builder..."
+            docker buildx use haystack-builder
+        else
+            log_warn "Existing builder is invalid, removing..."
+            docker buildx rm haystack-builder 2>/dev/null || true
+            log_info "Creating new buildx builder..."
+            docker buildx create --name haystack-builder --use
+        fi
+    else
         log_info "Creating buildx builder..."
         docker buildx create --name haystack-builder --use
-    else
-        docker buildx use haystack-builder
     fi
     
     # Build the image with all tags
