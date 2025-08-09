@@ -4,7 +4,7 @@
 # Docker configuration with defaults (override with environment variables)
 export DOCKER_REGISTRY ?= docker.io
 export DOCKER_REPO ?= nomasters/haystack
-export DOCKER_PLATFORMS ?= linux/amd64,linux/arm64,linux/arm/v7
+export DOCKER_PLATFORMS ?= linux/amd64,linux/arm64
 export DOCKER_PUSH ?= false
 export SKIP_GIT_CHECK ?= false
 

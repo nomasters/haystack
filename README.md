@@ -149,7 +149,7 @@ Haystack follows a modular design with clear separation of concerns:
 
 ### Docker Images
 
-Haystack uses a hermetic build system with content-based tagging. Images are built once and promoted through their lifecycle.
+Haystack uses a hermetic build system with content-based tagging. Images are built once and promoted through their lifecycle. Supports 64-bit platforms only (amd64, arm64).
 
 #### Pull and Run
 

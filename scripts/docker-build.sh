@@ -12,7 +12,7 @@ set -euo pipefail
 # Load configuration from environment or use defaults
 DOCKER_REGISTRY="${DOCKER_REGISTRY:-docker.io}"
 DOCKER_REPO="${DOCKER_REPO:-nomasters/haystack}"
-DOCKER_PLATFORMS="${DOCKER_PLATFORMS:-linux/amd64,linux/arm64,linux/arm/v7}"
+DOCKER_PLATFORMS="${DOCKER_PLATFORMS:-linux/amd64,linux/arm64}"
 DOCKER_PUSH="${DOCKER_PUSH:-false}"
 SKIP_GIT_CHECK="${SKIP_GIT_CHECK:-false}"
 
