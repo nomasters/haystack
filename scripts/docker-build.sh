@@ -118,12 +118,11 @@ add_tags() {
     log_info "Image already exists with tree hash, adding new commit tag..."
     
     if [ "${DOCKER_PUSH}" = "true" ]; then
-        # Pull the existing image
-        docker pull "$source_tag"
-        
-        # Tag with commit SHA
-        docker tag "$source_tag" "$commit_tag"
-        docker push "$commit_tag"
+        # Use imagetools to create new tag from existing image in registry
+        # This preserves multi-platform manifests and doesn't require local pull
+        docker buildx imagetools create \
+            --tag "$commit_tag" \
+            "$source_tag"
         
         log_info "Tag added and pushed: commit-${commit_sha}"
     else
