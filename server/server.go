@@ -122,8 +122,8 @@ func (s *Server) serve() {
 			return
 		default:
 			if err := s.processPacket(); err != nil {
-				// In a production environment, you might want to log this
-				// but continue processing other packets
+				// Log the error and continue processing other packets
+				s.logger.Errorf("Failed to process packet: %v", err)
 				continue
 			}
 		}
@@ -158,15 +158,13 @@ func (s *Server) processPacket() error {
 	switch n {
 	case needle.HashLength:
 		// GET operation: 32-byte hash query
-		s.logger.Infof("GET request from %s", addr)
 		return s.handleGet(buf[:n], addr)
 	case needle.NeedleLength:
 		// SET operation: 192-byte needle storage
-		s.logger.Infof("SET request from %s", addr)
 		return s.handleSet(buf[:n], addr)
 	default:
 		// Invalid packet size, log and drop
-		s.logger.Debugf("Invalid packet size %d from %s", n, addr)
+		s.logger.Debugf("Invalid packet size %d", n)
 		return nil
 	}
 }
@@ -177,21 +175,21 @@ func (s *Server) handleGet(hashBytes []byte, addr net.Addr) error {
 	var hash needle.Hash
 	copy(hash[:], hashBytes)
 
+	// Log the GET request with hash
+	s.logger.Infof("GET request for hash %x", hash)
+
 	// Retrieve needle from storage
 	n, err := s.storage.Get(hash)
 	if err != nil {
-		s.logger.Debugf("GET failed for hash %x: %v", hash, err)
-		return fmt.Errorf("failed to get needle: %w", err)
+		return fmt.Errorf("GET failed to hash %x: %w", hash, err)
 	}
 
 	// Send the full needle as response
-	bytesWritten, err := s.conn.WriteTo(n.Bytes(), addr)
-	if err != nil {
-		s.logger.Errorf("Failed to send GET response to %s: %v", addr, err)
+	if _, err := s.conn.WriteTo(n.Bytes(), addr); err != nil {
+		s.logger.Errorf("Failed to send GET response for hash %x: %v", hash, err)
 		return err
 	}
-
-	s.logger.Debugf("GET response sent to %s (%d bytes)", addr, bytesWritten)
+	s.logger.Debugf("GET successful for hash %x", hash)
 	return nil
 }
 
@@ -204,10 +202,16 @@ func (s *Server) handleSet(needleBytes []byte, _ net.Addr) error {
 		return fmt.Errorf("invalid needle: %w", err)
 	}
 
+	// Get the hash for logging
+	hash := n.Hash()
+	s.logger.Infof("SET request for hash %x", hash)
+
 	// Store the needle
 	if err := s.storage.Set(n); err != nil {
-		return fmt.Errorf("failed to store needle: %w", err)
+		return fmt.Errorf("SET failed to store needle for hash %x: %w", hash, err)
 	}
+
+	s.logger.Debugf("SET successful for hash %x", hash)
 
 	// No response for SET operations (by design)
 	return nil
