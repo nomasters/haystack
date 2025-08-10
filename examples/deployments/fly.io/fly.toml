@@ -7,7 +7,7 @@ app = 'haystack-example-trunk'
 primary_region = 'dfw'
 
 [build]
-dockerfile = "Dockerfile"
+image = "docker.io/nomasters/haystack:tree-TREE_HASH"
 
 [deploy]
 strategy = 'immediate'
