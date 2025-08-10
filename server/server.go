@@ -190,7 +190,7 @@ func (s *Server) handleGet(hashBytes []byte, addr net.Addr) error {
 		s.logger.Errorf("Failed to send GET response to %s: %v", addr, err)
 		return err
 	}
-	
+
 	s.logger.Debugf("GET response sent to %s (%d bytes)", addr, bytesWritten)
 	return nil
 }

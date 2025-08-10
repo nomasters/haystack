@@ -55,6 +55,7 @@ func TestClient_SetAndGet(t *testing.T) {
 		retrievedNeedle, err := client.Get(ctx, hash)
 		if err != nil {
 			t.Errorf("GET operation failed: %v", err)
+			return // Exit early if GET failed
 		}
 
 		if retrievedNeedle.Hash() != testNeedle.Hash() {
@@ -723,6 +724,8 @@ func (m *mockLogger) Error(v ...any)                 {}
 func (m *mockLogger) Errorf(format string, v ...any) {}
 func (m *mockLogger) Info(v ...any)                  {}
 func (m *mockLogger) Infof(format string, v ...any)  {}
+func (m *mockLogger) Debug(v ...any)                 {}
+func (m *mockLogger) Debugf(format string, v ...any) {}
 
 func TestPool_OverflowAndClosedScenarios(t *testing.T) {
 	serverAddr := startTestServer(t)

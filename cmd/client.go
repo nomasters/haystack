@@ -147,7 +147,7 @@ EXAMPLES:
 	hash := n.Hash()
 	verifyCtx, verifyCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer verifyCancel()
-	
+
 	verifiedNeedle, err := c.Get(verifyCtx, hash)
 	if err != nil {
 		// SET might have succeeded but verification failed
