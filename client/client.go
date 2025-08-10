@@ -196,7 +196,6 @@ func (c *Client) Stats() PoolStats {
 	return c.connPool.Stats()
 }
 
-
 // connectionPool manages a pool of UDP connections for reuse.
 type connectionPool struct {
 	address     string
