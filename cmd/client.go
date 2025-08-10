@@ -142,8 +142,22 @@ EXAMPLES:
 		os.Exit(1)
 	}
 
-	// Output hash based on format
+	// Verify the SET by immediately doing a GET
+	// This ensures the packet was transmitted and stored
 	hash := n.Hash()
+	verifyCtx, verifyCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer verifyCancel()
+	
+	verifiedNeedle, err := c.Get(verifyCtx, hash)
+	if err != nil {
+		// SET might have succeeded but verification failed
+		// Still output the hash but warn the user
+		fmt.Fprintf(os.Stderr, "Warning: Could not verify SET operation (GET failed): %v\n", err)
+	} else if verifiedNeedle.Hash() != hash {
+		fmt.Fprintf(os.Stderr, "Warning: SET verification returned different hash\n")
+	}
+
+	// Output hash based on format
 	hashHex := hex.EncodeToString(hash[:])
 	switch *format {
 	case "hex":
