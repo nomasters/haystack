@@ -20,13 +20,12 @@ func runServe(args []string) {
 	fs := flag.NewFlagSet("serve", flag.ExitOnError)
 
 	// Define flags
-	port := fs.String("port", "1337", "Port for the server listener")
-	fs.StringVar(port, "p", "1337", "Port for the server listener (shorthand)")
-	host := fs.String("host", "", "Hostname of server listener")
-	storageType := fs.String("storage", "memory", "Storage backend: memory or mmap")
-	dataDir := fs.String("data-dir", "./data", "Data directory for mmap storage")
-	quiet := fs.Bool("quiet", false, "Disable logging output")
-	fs.BoolVar(quiet, "q", false, "Disable logging output (shorthand)")
+	addr := fs.String("addr", getAddr(), "Server address (host:port)")
+	fs.StringVar(addr, "a", getAddr(), "Server address (host:port) (shorthand)")
+	storageType := fs.String("storage", getStorage(), "Storage backend: memory or mmap")
+	dataDir := fs.String("data-dir", getDataDir(), "Data directory for mmap storage")
+	quiet := fs.Bool("quiet", getQuiet(), "Disable logging output")
+	fs.BoolVar(quiet, "q", getQuiet(), "Disable logging output (shorthand)")
 	help := fs.Bool("help", false, "Show server command help")
 	fs.BoolVar(help, "h", false, "Show server command help (shorthand)")
 
@@ -38,18 +37,23 @@ USAGE:
     haystack serve [options]
 
 OPTIONS:
-    -p, --port <port>       Port for the server listener (default: 1337)
-        --host <host>       Hostname of server listener (default: "")
-        --storage <type>    Storage backend: memory or mmap (default: memory)
-        --data-dir <path>   Data directory for mmap storage (default: ./data)
+    -a, --addr <addr>       Server address (host:port) (default: %s)
+        --storage <type>    Storage backend: memory or mmap (default: %s)
+        --data-dir <path>   Data directory for mmap storage (default: %s)
     -q, --quiet            Disable logging output
     -h, --help             Show this help message
+
+ENVIRONMENT VARIABLES:
+    HAYSTACK_ADDR          Server address (overridden by --addr)
+    HAYSTACK_STORAGE       Storage backend (overridden by --storage)
+    HAYSTACK_DATA_DIR      Data directory (overridden by --data-dir)
+    HAYSTACK_QUIET         Set to "true" for quiet mode (overridden by --quiet)
 
 DESCRIPTION:
     Server mode is used to run long-lived haystack servers.
     Memory storage keeps data in RAM only.
     MMAP storage persists data to disk using memory-mapped files.
-`)
+`, getAddr(), getStorage(), getDataDir())
 	}
 
 	// Parse flags
@@ -63,16 +67,13 @@ DESCRIPTION:
 		return
 	}
 
-	// Build address
-	addr := *host + ":" + *port
-
 	// Set up logger based on quiet flag
 	var log logger.Logger
 	if *quiet {
 		log = logger.NewNoOp()
 	} else {
 		log = logger.New()
-		fmt.Printf("listening on: %s\n", addr)
+		fmt.Printf("listening on: %s\n", *addr)
 	}
 
 	// Create storage backend based on type
@@ -116,7 +117,7 @@ DESCRIPTION:
 
 	// Handle graceful shutdown
 	go func() {
-		if err := srv.ListenAndServe(addr); err != nil {
+		if err := srv.ListenAndServe(*addr); err != nil {
 			log.Fatalf("Server error: %v", err)
 		}
 	}()
@@ -146,4 +147,36 @@ DESCRIPTION:
 	if !*quiet {
 		fmt.Println("Server stopped")
 	}
+}
+
+// getAddr returns the server address from environment or default
+func getAddr() string {
+	if addr := os.Getenv("HAYSTACK_ADDR"); addr != "" {
+		return addr
+	}
+	return ":1337"
+}
+
+// getStorage returns the storage type from environment or default
+func getStorage() string {
+	if storage := os.Getenv("HAYSTACK_STORAGE"); storage != "" {
+		return storage
+	}
+	return "memory"
+}
+
+// getDataDir returns the data directory from environment or default
+func getDataDir() string {
+	if dataDir := os.Getenv("HAYSTACK_DATA_DIR"); dataDir != "" {
+		return dataDir
+	}
+	return "./data"
+}
+
+// getQuiet returns the quiet setting from environment or default
+func getQuiet() bool {
+	if quiet := os.Getenv("HAYSTACK_QUIET"); quiet == "true" {
+		return true
+	}
+	return false
 }

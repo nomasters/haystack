@@ -1,0 +1,40 @@
+# fly.toml app configuration file generated for haystack-example-trunk on 2025-08-09T20:54:42-06:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'haystack-example-trunk'
+primary_region = 'dfw'
+
+[build]
+image = 'nomasters/haystack:tree-TREE_HASH'
+
+[deploy]
+strategy = 'immediate'
+
+# Environment variables for haystack configuration
+[env]
+HAYSTACK_ADDR = '0.0.0.0:1337'
+HAYSTACK_STORAGE = 'mmap'
+HAYSTACK_DATA_DIR = '/data'
+
+# Persistent volume for mmap storage
+[mounts]
+source = 'haystack_data'
+destination = '/data'
+initial_size = '10gb'
+
+# Simple command now that configuration is via environment variables
+[processes]
+app = 'serve'
+
+[[services]]
+protocol = 'udp'
+internal_port = 1337
+processes = ['app']
+
+[[services.ports]]
+port = 1337
+
+[[vm]]
+size = 'shared-cpu-1x'
