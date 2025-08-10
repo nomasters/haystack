@@ -14,15 +14,33 @@ type Logger interface {
 	Errorf(format string, v ...any)
 	Info(v ...any)
 	Infof(format string, v ...any)
-	// Debug(v ...any)
-	// Debugf(format string, v ...any)
+	Debug(v ...any)
+	Debugf(format string, v ...any)
 }
 
 // New returns a SlogLogger reference that satisfies the Logger interface.
 func New() *SlogLogger {
+	return NewWithLevel("info")
+}
+
+// NewWithLevel returns a SlogLogger with the specified log level.
+// Valid levels: "debug", "info", "error"
+func NewWithLevel(level string) *SlogLogger {
+	var logLevel slog.Level
+	switch level {
+	case "debug":
+		logLevel = slog.LevelDebug
+	case "error":
+		logLevel = slog.LevelError
+	case "info":
+		fallthrough
+	default:
+		logLevel = slog.LevelInfo
+	}
+
 	handler := slog.NewJSONHandler(os.Stderr, &slog.HandlerOptions{
 		AddSource: false,
-		Level:     slog.LevelInfo,
+		Level:     logLevel,
 	})
 	logger := slog.New(handler)
 	return &SlogLogger{logger: logger}
@@ -65,6 +83,16 @@ func (s *SlogLogger) Infof(format string, v ...any) {
 	s.logger.Info(fmt.Sprintf(format, v...))
 }
 
+// Debug starts a new message at the debug level in the logger
+func (s *SlogLogger) Debug(v ...any) {
+	s.logger.Debug(fmt.Sprint(v...))
+}
+
+// Debugf starts a formatted message at the debug level in the logger
+func (s *SlogLogger) Debugf(format string, v ...any) {
+	s.logger.Debug(fmt.Sprintf(format, v...))
+}
+
 // NoOpLogger is a logger that does nothing - useful for silent mode
 type NoOpLogger struct{}
 
@@ -94,3 +122,9 @@ func (n *NoOpLogger) Info(v ...any) {}
 
 // Infof does nothing in NoOp mode
 func (n *NoOpLogger) Infof(format string, v ...any) {}
+
+// Debug does nothing in NoOp mode
+func (n *NoOpLogger) Debug(v ...any) {}
+
+// Debugf does nothing in NoOp mode
+func (n *NoOpLogger) Debugf(format string, v ...any) {}

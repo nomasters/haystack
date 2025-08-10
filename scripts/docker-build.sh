@@ -81,11 +81,21 @@ build_image() {
     # This avoids "existing instance" errors
     if docker buildx ls | grep -q "haystack-builder"; then
         log_info "Removing existing buildx builder..."
-        docker buildx rm haystack-builder 2>/dev/null || true
+        docker buildx rm --force haystack-builder || {
+            log_warn "Failed to remove builder, attempting to use existing one..."
+            docker buildx use haystack-builder
+        }
     fi
     
-    log_info "Creating buildx builder..."
-    docker buildx create --name haystack-builder --use --bootstrap
+    # Only create if it doesn't exist after removal attempt
+    if ! docker buildx ls | grep -q "haystack-builder"; then
+        log_info "Creating buildx builder..."
+        docker buildx create --name haystack-builder --use --bootstrap
+    else
+        log_info "Using existing haystack-builder..."
+        docker buildx use haystack-builder
+        docker buildx inspect --bootstrap
+    fi
     
     # Build the image with all tags
     local build_args=(

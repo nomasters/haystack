@@ -42,8 +42,11 @@ go install github.com/nomasters/haystack@latest
 # Default configuration (localhost:1337)
 haystack serve
 
-# Custom host and port
-haystack serve -H 0.0.0.0 -p 9000
+# Custom address
+haystack serve -a 0.0.0.0:9000
+
+# Using environment variables
+HAYSTACK_ADDR=0.0.0.0:9000 haystack serve
 ```
 
 ### Client Operations
@@ -161,7 +164,7 @@ docker run -p 1337:1337/udp nomasters/haystack:main serve
 docker run -p 1337:1337/udp nomasters/haystack:v0.1.0 serve
 
 # Run with custom configuration
-docker run -p 1337:1337/udp nomasters/haystack:v0.1.0 serve -H 0.0.0.0 -p 1337
+docker run -p 1337:1337/udp -e HAYSTACK_ADDR=0.0.0.0:1337 nomasters/haystack:v0.1.0 serve
 ```
 
 #### Available Tags

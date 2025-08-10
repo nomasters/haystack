@@ -158,12 +158,15 @@ func (s *Server) processPacket() error {
 	switch n {
 	case needle.HashLength:
 		// GET operation: 32-byte hash query
+		s.logger.Infof("GET request from %s", addr)
 		return s.handleGet(buf[:n], addr)
 	case needle.NeedleLength:
 		// SET operation: 192-byte needle storage
+		s.logger.Infof("SET request from %s", addr)
 		return s.handleSet(buf[:n], addr)
 	default:
-		// Invalid packet size, silently drop
+		// Invalid packet size, log and drop
+		s.logger.Debugf("Invalid packet size %d from %s", n, addr)
 		return nil
 	}
 }
@@ -177,12 +180,19 @@ func (s *Server) handleGet(hashBytes []byte, addr net.Addr) error {
 	// Retrieve needle from storage
 	n, err := s.storage.Get(hash)
 	if err != nil {
+		s.logger.Debugf("GET failed for hash %x: %v", hash, err)
 		return fmt.Errorf("failed to get needle: %w", err)
 	}
 
 	// Send the full needle as response
-	_, err = s.conn.WriteTo(n.Bytes(), addr)
-	return err
+	bytesWritten, err := s.conn.WriteTo(n.Bytes(), addr)
+	if err != nil {
+		s.logger.Errorf("Failed to send GET response to %s: %v", addr, err)
+		return err
+	}
+
+	s.logger.Debugf("GET response sent to %s (%d bytes)", addr, bytesWritten)
+	return nil
 }
 
 // handleSet processes a needle storage request.

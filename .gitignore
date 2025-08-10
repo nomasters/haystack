@@ -27,3 +27,6 @@ haystack
 benchmark_results*
 
 gosec-report.json
+
+# Scratch directory for testing
+scratch/

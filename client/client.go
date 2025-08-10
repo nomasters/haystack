@@ -110,14 +110,14 @@ func (c *Client) SetBytes(ctx context.Context, data []byte) error {
 	}
 	defer c.connPool.Put(conn)
 
-	// Set write timeout
+	// Set timeout (using SetDeadline like GET does)
 	if deadline, ok := ctx.Deadline(); ok {
-		if err := conn.SetWriteDeadline(deadline); err != nil {
-			c.logger.Errorf("Failed to set write deadline: %v", err)
+		if err := conn.SetDeadline(deadline); err != nil {
+			c.logger.Errorf("Failed to set deadline: %v", err)
 		}
 	} else {
-		if err := conn.SetWriteDeadline(time.Now().Add(c.writeTimeout)); err != nil {
-			c.logger.Errorf("Failed to set write timeout: %v", err)
+		if err := conn.SetDeadline(time.Now().Add(c.writeTimeout)); err != nil {
+			c.logger.Errorf("Failed to set timeout: %v", err)
 		}
 	}
 
@@ -300,6 +300,7 @@ func (p *connectionPool) MarkBad(conn net.Conn) {
 
 // createConn creates a new connection.
 func (p *connectionPool) createConn() (*pooledConn, error) {
+	// Use regular Dial for connected UDP socket
 	conn, err := net.Dial("udp", p.address)
 	if err != nil {
 		return nil, err
