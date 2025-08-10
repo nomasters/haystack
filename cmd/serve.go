@@ -24,8 +24,9 @@ func runServe(args []string) {
 	fs.StringVar(addr, "a", getAddr(), "Server address (host:port) (shorthand)")
 	storageType := fs.String("storage", getStorage(), "Storage backend: memory or mmap")
 	dataDir := fs.String("data-dir", getDataDir(), "Data directory for mmap storage")
-	quiet := fs.Bool("quiet", getQuiet(), "Disable logging output")
-	fs.BoolVar(quiet, "q", getQuiet(), "Disable logging output (shorthand)")
+	logLevel := fs.String("log-level", getLogLevel(), "Log level: debug, info, error, or silent")
+	quiet := fs.Bool("quiet", false, "Disable logging output (same as --log-level=silent)")
+	fs.BoolVar(quiet, "q", false, "Disable logging output (shorthand)")
 	help := fs.Bool("help", false, "Show server command help")
 	fs.BoolVar(help, "h", false, "Show server command help (shorthand)")
 
@@ -40,20 +41,21 @@ OPTIONS:
     -a, --addr <addr>       Server address (host:port) (default: %s)
         --storage <type>    Storage backend: memory or mmap (default: %s)
         --data-dir <path>   Data directory for mmap storage (default: %s)
-    -q, --quiet            Disable logging output
+        --log-level <level> Log level: debug, info, error, or silent (default: %s)
+    -q, --quiet            Disable logging output (same as --log-level=silent)
     -h, --help             Show this help message
 
 ENVIRONMENT VARIABLES:
     HAYSTACK_ADDR          Server address (overridden by --addr)
     HAYSTACK_STORAGE       Storage backend (overridden by --storage)
     HAYSTACK_DATA_DIR      Data directory (overridden by --data-dir)
-    HAYSTACK_QUIET         Set to "true" for quiet mode (overridden by --quiet)
+    HAYSTACK_LOG_LEVEL     Log level (overridden by --log-level)
 
 DESCRIPTION:
     Server mode is used to run long-lived haystack servers.
     Memory storage keeps data in RAM only.
     MMAP storage persists data to disk using memory-mapped files.
-`, getAddr(), getStorage(), getDataDir())
+`, getAddr(), getStorage(), getDataDir(), getLogLevel())
 	}
 
 	// Parse flags
@@ -67,13 +69,19 @@ DESCRIPTION:
 		return
 	}
 
-	// Set up logger based on quiet flag
-	var log logger.Logger
+	// Determine effective log level
+	effectiveLogLevel := *logLevel
 	if *quiet {
+		effectiveLogLevel = "silent"
+	}
+
+	// Set up logger based on log level
+	var log logger.Logger
+	if effectiveLogLevel == "silent" {
 		log = logger.NewNoOp()
 	} else {
-		log = logger.New()
-		fmt.Printf("listening on: %s\n", *addr)
+		log = logger.NewWithLevel(effectiveLogLevel)
+		fmt.Printf("listening on: %s (log level: %s)\n", *addr, effectiveLogLevel)
 	}
 
 	// Create storage backend based on type
@@ -173,10 +181,10 @@ func getDataDir() string {
 	return "./data"
 }
 
-// getQuiet returns the quiet setting from environment or default
-func getQuiet() bool {
-	if quiet := os.Getenv("HAYSTACK_QUIET"); quiet == "true" {
-		return true
+// getLogLevel returns the log level from environment or default
+func getLogLevel() string {
+	if level := os.Getenv("HAYSTACK_LOG_LEVEL"); level != "" {
+		return level
 	}
-	return false
+	return "info"
 }

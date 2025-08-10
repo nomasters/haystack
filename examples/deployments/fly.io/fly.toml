@@ -17,6 +17,7 @@ strategy = 'immediate'
 HAYSTACK_ADDR = 'fly-global-services:1337'
 HAYSTACK_STORAGE = 'memory'
 HAYSTACK_DATA_DIR = '/data'
+HAYSTACK_LOG_LEVEL = 'debug'
 
 # Persistent volume for mmap storage
 [mounts]

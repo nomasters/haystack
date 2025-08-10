@@ -196,6 +196,32 @@ func (c *Client) Stats() PoolStats {
 	return c.connPool.Stats()
 }
 
+// udpConn wraps a PacketConn to implement net.Conn for unconnected UDP.
+// This allows receiving responses from any address, which is needed for NAT traversal.
+type udpConn struct {
+	net.PacketConn
+	serverAddr net.Addr
+}
+
+// Read implements net.Conn Read for unconnected UDP.
+func (c *udpConn) Read(b []byte) (int, error) {
+	// ReadFrom accepts packets from any address
+	// This is crucial for NAT traversal where responses may come from different addresses
+	n, _, err := c.PacketConn.ReadFrom(b)
+	return n, err
+}
+
+// Write implements net.Conn Write for unconnected UDP.
+func (c *udpConn) Write(b []byte) (int, error) {
+	// Always send to the server address
+	return c.PacketConn.WriteTo(b, c.serverAddr)
+}
+
+// RemoteAddr implements net.Conn RemoteAddr.
+func (c *udpConn) RemoteAddr() net.Addr {
+	return c.serverAddr
+}
+
 // connectionPool manages a pool of UDP connections for reuse.
 type connectionPool struct {
 	address     string
@@ -300,8 +326,17 @@ func (p *connectionPool) MarkBad(conn net.Conn) {
 
 // createConn creates a new connection.
 func (p *connectionPool) createConn() (*pooledConn, error) {
-	conn, err := net.Dial("udp", p.address)
+	// Use ListenPacket to create an unconnected UDP socket
+	// This allows receiving responses from any address (needed for NAT/Fly.io)
+	conn, err := net.ListenPacket("udp", "")
 	if err != nil {
+		return nil, err
+	}
+
+	// Resolve the server address once
+	serverAddr, err := net.ResolveUDPAddr("udp", p.address)
+	if err != nil {
+		conn.Close()
 		return nil, err
 	}
 
@@ -310,9 +345,9 @@ func (p *connectionPool) createConn() (*pooledConn, error) {
 	p.mu.Unlock()
 
 	return &pooledConn{
-		Conn:     conn,
-		created:  time.Now(),
-		lastUsed: time.Now(),
+		Conn:       &udpConn{PacketConn: conn, serverAddr: serverAddr},
+		created:    time.Now(),
+		lastUsed:   time.Now(),
 	}, nil
 }
 
