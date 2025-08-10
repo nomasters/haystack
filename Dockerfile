@@ -14,11 +14,10 @@ RUN CGO_ENABLED=0 go build \
     -o haystack \
     ./cmd/haystack
 
-FROM scratch
+FROM cgr.dev/chainguard/static:latest
 
 COPY --from=builder /build/haystack /haystack
 
-# scratch doesn't have mkdir, so WORKDIR creates the directory
 WORKDIR /data
 
 EXPOSE 1337/udp
