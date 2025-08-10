@@ -70,14 +70,20 @@ main() {
     log_info "Deploying image: ${image_tag}"
     
     # Deploy to Fly.io
-    if fly deploy --config fly.toml.generated; then
+    # Use flyctl if available (GitHub Actions), otherwise fall back to fly
+    FLY_CMD="fly"
+    if command -v flyctl >/dev/null 2>&1; then
+        FLY_CMD="flyctl"
+    fi
+    
+    if $FLY_CMD deploy --config fly.toml.generated; then
         log_info "✓ Deployment successful!"
         
         # Clean up generated file
         rm -f fly.toml.generated
         
         # Show app info
-        fly status
+        $FLY_CMD status
     else
         log_error "Deployment failed!"
         rm -f fly.toml.generated
