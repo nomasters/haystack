@@ -64,6 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [quality-checks, test]
     # Only build and push Docker images on main branch after tests pass
+    # Note: Fly.io deployment happens in a separate workflow (deploy-fly.yaml)
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - uses: actions/checkout@v4
