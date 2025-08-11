@@ -15,9 +15,9 @@ strategy = 'immediate'
 # Environment variables for haystack configuration
 [env]
 HAYSTACK_ADDR = 'fly-global-services:1337'
-HAYSTACK_STORAGE = 'memory'
+HAYSTACK_STORAGE = 'mmap'
 HAYSTACK_DATA_DIR = '/data'
-HAYSTACK_LOG_LEVEL = 'debug'
+HAYSTACK_LOG_LEVEL = 'info'
 
 # Persistent volume for mmap storage
 [mounts]
