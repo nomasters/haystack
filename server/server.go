@@ -184,12 +184,20 @@ func (s *Server) handleGet(hashBytes []byte, addr net.Addr) error {
 		return fmt.Errorf("GET failed to hash %x: %w", hash, err)
 	}
 
-	// Send the full needle as response
-	if _, err := s.conn.WriteTo(n.Bytes(), addr); err != nil {
-		s.logger.Errorf("Failed to send GET response for hash %x: %v", hash, err)
-		return err
-	}
-	s.logger.Debugf("GET successful for hash %x", hash)
+	// Send response in a goroutine to avoid blocking packet processing
+	// Copy the needle bytes since the buffer will be reused
+	responseData := make([]byte, needle.NeedleLength)
+	copy(responseData, n.Bytes())
+
+	go func() {
+		// Send the full needle as response
+		if _, err := s.conn.WriteTo(responseData, addr); err != nil {
+			s.logger.Errorf("Failed to send GET response for hash %x: %v", hash, err)
+		} else {
+			s.logger.Debugf("GET successful for hash %x", hash)
+		}
+	}()
+
 	return nil
 }
 
