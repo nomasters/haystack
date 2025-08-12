@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"sync"
 	"time"
@@ -171,16 +172,15 @@ func (c *Client) GetBytes(ctx context.Context, hashBytes []byte) ([]byte, error)
 		return nil, fmt.Errorf("failed to write hash: %w", err)
 	}
 
-	// Read response
+	// Read response - exactly 192 bytes
 	response := make([]byte, needle.NeedleLength)
-	n, err := conn.Read(response)
+	n, err := io.ReadFull(conn, response)
 	if err != nil {
 		c.connPool.MarkBad(conn)
+		if err == io.ErrUnexpectedEOF {
+			return nil, fmt.Errorf("incomplete response: expected %d bytes, got %d", needle.NeedleLength, n)
+		}
 		return nil, fmt.Errorf("failed to read response: %w", err)
-	}
-
-	if n != needle.NeedleLength {
-		return nil, fmt.Errorf("invalid response length: expected %d bytes, got %d", needle.NeedleLength, n)
 	}
 
 	return response, nil
